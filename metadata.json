@@ -1,0 +1,6 @@
+{
+  "name": "Personal Purchase Planner",
+  "description": "Save and invest now to buy later. Plan future purchases, track contributions, and model financial scenarios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
