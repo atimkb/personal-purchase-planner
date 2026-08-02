@@ -185,13 +185,14 @@ class PlannerViewModel(
         val actualWithdrawals = contributionsThisMonth.filter { it.type == "WITHDRAWAL" }.sumOf { it.amount }
         val totalActuallyRecorded = max(0L, actualAdditions - actualWithdrawals)
 
-        val totalAllocated = totalGoalAllocations + totalCommitments + totalOther
-        val available = effectiveMonthlyIncome - totalAllocated
+        // ACTUAL allocated = actually recorded goal contributions + recurring commitments + other commitments
+        val actualAllocated = totalActuallyRecorded + totalCommitments + totalOther
+        val available = effectiveMonthlyIncome - actualAllocated
         val availablePcent = if (effectiveMonthlyIncome > 0L) {
             ((available * 100L) / effectiveMonthlyIncome).toInt()
         } else 0
         val allocatedPcent = if (effectiveMonthlyIncome > 0L) {
-            ((totalAllocated * 100L) / effectiveMonthlyIncome).toInt()
+            ((actualAllocated * 100L) / effectiveMonthlyIncome).toInt()
         } else 0
 
         val summary = DashboardSummary(
@@ -199,11 +200,11 @@ class PlannerViewModel(
             totalGoalAllocations = totalGoalAllocations,
             totalCommitments = totalCommitments,
             totalOtherAllocations = totalOther,
-            totalAllocated = totalAllocated,
+            totalAllocated = actualAllocated,
             availableThisMonth = available,
             allocatedPercentage = allocatedPcent,
             availablePercentage = availablePcent,
-            isOverAllocated = totalAllocated > effectiveMonthlyIncome || available < 0L,
+            isOverAllocated = actualAllocated > effectiveMonthlyIncome || available < 0L,
             totalActuallyRecorded = totalActuallyRecorded
         )
 
