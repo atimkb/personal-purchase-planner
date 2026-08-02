@@ -18,15 +18,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -46,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -226,7 +222,7 @@ fun SettingsScreen(
     }
 
     if (showEditIncomeDialog) {
-        var incomeText by remember { mutableStateOf(state.userSettings.monthlyIncome.toInt().toString()) }
+        var incomeText by remember { mutableStateOf((state.userSettings.monthlyIncome / 100L).toString()) }
         var currency by remember { mutableStateOf(state.userSettings.currencySymbol) }
         val currencies = listOf("₹", "$", "€", "£", "¥")
 
@@ -267,8 +263,9 @@ fun SettingsScreen(
             },
             confirmButton = {
                 Button(onClick = {
-                    val income = incomeText.toDoubleOrNull() ?: state.userSettings.monthlyIncome
-                    onUpdateUserSettings(state.userSettings.copy(monthlyIncome = income, currencySymbol = currency))
+                    val incomeRupees = incomeText.toLongOrNull() ?: (state.userSettings.monthlyIncome / 100L)
+                    val incomePaise = incomeRupees * 100L
+                    onUpdateUserSettings(state.userSettings.copy(monthlyIncome = incomePaise, currencySymbol = currency))
                     showEditIncomeDialog = false
                 }) { Text("Save") }
             },
@@ -317,7 +314,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showResetDataConfirm = false },
             title = { Text("Reset Sample Data?") },
-            text = { Text("This will restore the default goals (Ice Cream Maker, Laptop, Bike, Car) and sample dataset matching the app blueprint.") },
+            text = { Text("This will restore default sample goals and dataset matching the app blueprint.") },
             confirmButton = {
                 Button(onClick = {
                     onResetSampleData()

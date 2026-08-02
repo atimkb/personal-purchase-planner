@@ -32,27 +32,27 @@ private data class Tuple5<A, B, C, D, E>(
 data class GoalWithCalculations(
     val goal: Goal,
     val contributions: List<Contribution>,
-    val totalContributed: Double,
-    val currentValue: Double,
-    val gainAmount: Double,
-    val gainPercentage: Double,
-    val fundingProgressPercentage: Double,
-    val currentValueProgressPercentage: Double,
+    val totalContributed: Long,
+    val currentValue: Long,
+    val gainAmount: Long,
+    val gainPercentage: Long,
+    val fundingProgressPercentage: Long,
+    val currentValueProgressPercentage: Long,
     val monthsRemaining: Int,
-    val suggestedMonthlyContribution: Double,
-    val projectedTargetValue: Double,
-    val expectedSurplusOrShortfall: Double,
+    val suggestedMonthlyContribution: Long,
+    val projectedTargetValue: Long,
+    val expectedSurplusOrShortfall: Long,
     val progressPercentage: Int,
     val isTargetReached: Boolean
 )
 
 data class DashboardSummary(
-    val monthlyIncome: Double = 50000.0,
-    val totalGoalAllocations: Double = 0.0,
-    val totalCommitments: Double = 0.0,
-    val totalOtherAllocations: Double = 0.0,
-    val totalAllocated: Double = 0.0,
-    val availableThisMonth: Double = 0.0,
+    val monthlyIncome: Long = 5000000L,
+    val totalGoalAllocations: Long = 0L,
+    val totalCommitments: Long = 0L,
+    val totalOtherAllocations: Long = 0L,
+    val totalAllocated: Long = 0L,
+    val availableThisMonth: Long = 0L,
     val allocatedPercentage: Int = 0,
     val availablePercentage: Int = 100,
     val isOverAllocated: Boolean = false
@@ -118,7 +118,7 @@ class PlannerViewModel(
                     monthsRemaining = monthsRem,
                     expectedReturnRatePcent = goal.expectedReturnRate
                 )
-            } else 0.0
+            } else 0L
 
             val projectedTarget = PlannerCalculations.calculateProjectedTargetValue(
                 currentValue = ledger.latestActualValue,
@@ -159,10 +159,12 @@ class PlannerViewModel(
 
         val totalAllocated = totalGoalAllocations + totalCommitments + totalOther
         val available = effectiveMonthlyIncome - totalAllocated
-        val availablePcent = if (effectiveMonthlyIncome > 0) {
-            ((available / effectiveMonthlyIncome) * 100).toInt().coerceIn(0, 100)
+        val availablePcent = if (effectiveMonthlyIncome > 0L) {
+            ((available * 100L) / effectiveMonthlyIncome).toInt()
         } else 0
-        val allocatedPcent = 100 - availablePcent
+        val allocatedPcent = if (effectiveMonthlyIncome > 0L) {
+            ((totalAllocated * 100L) / effectiveMonthlyIncome).toInt()
+        } else 0
 
         val summary = DashboardSummary(
             monthlyIncome = effectiveMonthlyIncome,
@@ -170,10 +172,10 @@ class PlannerViewModel(
             totalCommitments = totalCommitments,
             totalOtherAllocations = totalOther,
             totalAllocated = totalAllocated,
-            availableThisMonth = max(0.0, available),
+            availableThisMonth = available,
             allocatedPercentage = allocatedPcent,
             availablePercentage = availablePcent,
-            isOverAllocated = totalAllocated > effectiveMonthlyIncome
+            isOverAllocated = totalAllocated > effectiveMonthlyIncome || available < 0L
         )
 
         PlannerUiState(
@@ -198,10 +200,10 @@ class PlannerViewModel(
         _selectedMonthYear.value = monthYear
     }
 
-    fun setMonthlyIncomeForSelectedMonth(monthYear: String, income: Double) {
+    fun setMonthlyIncomeForSelectedMonth(monthYear: String, incomeInPaise: Long) {
         viewModelScope.launch {
             repository.upsertMonthlyRecord(
-                com.example.data.MonthlyRecord(monthYear = monthYear, monthlyIncome = income)
+                com.example.data.MonthlyRecord(monthYear = monthYear, monthlyIncome = incomeInPaise)
             )
         }
     }
@@ -242,14 +244,14 @@ class PlannerViewModel(
         }
     }
 
-    fun completeGoal(goalId: Int, finalPurchasePrice: Double) {
+    fun completeGoal(goalId: Int, finalPurchasePriceInPaise: Long) {
         viewModelScope.launch {
             val goalWithCalc = uiState.value.goals.find { it.goal.id == goalId }
             if (goalWithCalc != null) {
                 val updatedGoal = goalWithCalc.goal.copy(
                     status = "COMPLETED",
                     completedDateEpochMillis = System.currentTimeMillis(),
-                    finalPurchasePrice = finalPurchasePrice
+                    finalPurchasePrice = finalPurchasePriceInPaise
                 )
                 repository.updateGoal(updatedGoal)
             }
@@ -259,12 +261,6 @@ class PlannerViewModel(
     fun addContribution(contribution: Contribution) {
         viewModelScope.launch {
             repository.insertContribution(contribution)
-            // Also update current manual value of goal to include new contribution
-            val goalWithCalc = uiState.value.goals.find { it.goal.id == contribution.goalId }
-            if (goalWithCalc != null) {
-                val newCurrentVal = goalWithCalc.currentValue + contribution.amount
-                repository.updateGoal(goalWithCalc.goal.copy(currentManualValue = newCurrentVal))
-            }
         }
     }
 

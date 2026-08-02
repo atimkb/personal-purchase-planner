@@ -7,16 +7,15 @@ import androidx.room.PrimaryKey
 data class Goal(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val targetPrice: Double,
+    val targetPrice: Long, // in paise
     val targetDateEpochMillis: Long,
-    val alreadySavedAmount: Double = 0.0,
+    val alreadySavedAmount: Long = 0L, // in paise
     val category: String = "Other", // "Kitchen", "Electronics", "Vehicle", "Travel", "Fashion", "Home", "Other"
     val priority: String = "MEDIUM", // "HIGH", "MEDIUM", "LOW"
-    val expectedReturnRate: Double = 8.0, // annual return %
+    val expectedReturnRate: Long = 8L, // annual return % as integer
     val status: String = "ACTIVE", // "ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"
-    val currentManualValue: Double? = null,
     val completedDateEpochMillis: Long? = null,
-    val finalPurchasePrice: Double? = null,
+    val finalPurchasePrice: Long? = null, // in paise
     val iconName: String = "default",
     val createdAtEpochMillis: Long = System.currentTimeMillis()
 )

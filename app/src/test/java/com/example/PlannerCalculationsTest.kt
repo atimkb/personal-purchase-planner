@@ -13,9 +13,10 @@ class PlannerCalculationsTest {
 
     @Test
     fun testCurrencyFormatting() {
-        assertEquals("₹5,000", PlannerCalculations.formatCurrency(5000.0, "₹"))
-        assertEquals("₹1,50,000", PlannerCalculations.formatCurrency(150000.0, "₹"))
-        assertEquals("$5,000", PlannerCalculations.formatCurrency(5000.0, "$"))
+        assertEquals("₹5,000", PlannerCalculations.formatCurrency(500000L, "₹"))
+        assertEquals("₹1,50,000", PlannerCalculations.formatCurrency(15000000L, "₹"))
+        assertEquals("$5,000", PlannerCalculations.formatCurrency(500000L, "$"))
+        assertEquals("₹5,000.50", PlannerCalculations.formatCurrency(500050L, "₹"))
     }
 
     @Test
@@ -23,59 +24,59 @@ class PlannerCalculationsTest {
         val goal = Goal(
             id = 1,
             name = "Test Goal",
-            targetPrice = 5000.0,
-            alreadySavedAmount = 1000.0
+            targetPrice = 500000L, // ₹5000
+            targetDateEpochMillis = System.currentTimeMillis() + 86400000L * 30L,
+            alreadySavedAmount = 100000L // ₹1000
         )
 
         val contribs = listOf(
-            Contribution(goalId = 1, amount = 2000.0, type = "CONTRIBUTION"),
-            Contribution(goalId = 1, amount = 500.0, type = "WITHDRAWAL"),
-            Contribution(goalId = 1, amount = 3200.0, type = "VALUE_UPDATE")
+            Contribution(goalId = 1, amount = 200000L, type = "CONTRIBUTION"), // ₹2000
+            Contribution(goalId = 1, amount = 50000L, type = "WITHDRAWAL"), // ₹500
+            Contribution(goalId = 1, amount = 320000L, type = "VALUE_UPDATE") // ₹3200
         )
 
         val ledger = PlannerCalculations.calculateGoalLedger(goal, contribs)
 
-        // Contributed: 1000 + 2000 - 500 = 2500
-        assertEquals(2500.0, ledger.totalContributed, 0.01)
-        // Latest value update = 3200
-        assertEquals(3200.0, ledger.latestActualValue, 0.01)
-        // Gain = 3200 - 2500 = 700
-        assertEquals(700.0, ledger.gainAmount, 0.01)
+        // Contributed: 1000 + 2000 - 500 = 2500 (250000L paise)
+        assertEquals(250000L, ledger.totalContributed)
+        // Latest value update = 3200 (320000L paise)
+        assertEquals(320000L, ledger.latestActualValue)
+        // Gain = 3200 - 2500 = 700 (70000L paise)
+        assertEquals(70000L, ledger.gainAmount)
         // Funding progress = (2500 / 5000) * 100 = 50%
-        assertEquals(50.0, ledger.fundingProgressPercentage, 0.01)
+        assertEquals(50L, ledger.fundingProgressPercentage)
         // Current value progress = (3200 / 5000) * 100 = 64%
-        assertEquals(64.0, ledger.currentValueProgressPercentage, 0.01)
+        assertEquals(64L, ledger.currentValueProgressPercentage)
     }
 
     @Test
     fun testAffordabilityAndTimelineExtension() {
-        // Target: 10,000, currentValue: 0, 10 months remaining, return rate 0% => required 1000/mo
+        // Target: 10,000 (1000000L), currentValue: 0, 10 months remaining, return rate 0% => required 1000/mo (100000L)
         val aff = PlannerCalculations.calculateAffordability(
-            targetPrice = 10000.0,
-            currentValue = 0.0,
+            targetPrice = 1000000L,
+            currentValue = 0L,
             monthsRemaining = 10,
-            returnRatePcent = 0.0,
-            availableMonthlyCapacity = 800.0
+            returnRatePcent = 0L,
+            availableMonthlyCapacity = 80000L // ₹800
         )
 
-        assertEquals(1000.0, aff.requiredMonthly, 0.01)
+        assertEquals(100000L, aff.requiredMonthly)
         assertFalse(aff.isAffordable)
-        assertEquals(200.0, aff.capacityShortfall, 0.01)
+        assertEquals(20000L, aff.capacityShortfall)
 
         // Timeline extension check
         val extension = PlannerCalculations.calculateEarliestAffordableTargetDate(
-            remainingTarget = 10000.0,
-            availableCapacity = 800.0
+            remainingTarget = 1000000L,
+            availableCapacity = 80000L
         )
 
         assertTrue(extension.isPossible)
-        // 10000 / 800 = 12.5 => 13 months
         assertEquals(13, extension.monthsNeeded)
 
         // Zero/negative capacity check
         val blockedExtension = PlannerCalculations.calculateEarliestAffordableTargetDate(
-            remainingTarget = 10000.0,
-            availableCapacity = 0.0
+            remainingTarget = 1000000L,
+            availableCapacity = 0L
         )
         assertFalse(blockedExtension.isPossible)
     }
@@ -83,26 +84,47 @@ class PlannerCalculationsTest {
     @Test
     fun testAllocationMetrics() {
         val commitments = listOf(
-            Commitment(id = 1, name = "Rent", monthlyAmount = 15000.0, category = "Housing")
+            Commitment(id = 1, name = "Rent", monthlyAmount = 1500000L, category = "Housing")
         )
 
         val actualContribs = listOf(
-            Contribution(goalId = 1, amount = 3000.0, type = "CONTRIBUTION")
+            Contribution(goalId = 1, amount = 300000L, type = "CONTRIBUTION")
         )
 
         val metrics = PlannerCalculations.calculateMonthlyAllocations(
-            monthlyIncome = 50000.0,
+            monthlyIncome = 5000000L,
             commitments = commitments,
-            activeSuggestedGoalContributions = 5000.0,
+            activeSuggestedGoalContributions = 500000L,
             actualContributionsThisMonth = actualContribs
         )
 
-        assertEquals(50000.0, metrics.plannedIncome, 0.01)
-        assertEquals(15000.0, metrics.plannedCommitments, 0.01)
-        assertEquals(5000.0, metrics.plannedGoalContributions, 0.01)
-        assertEquals(30000.0, metrics.plannedUnallocated, 0.01)
+        assertEquals(5000000L, metrics.plannedIncome)
+        assertEquals(1500000L, metrics.plannedCommitments)
+        assertEquals(500000L, metrics.plannedGoalContributions)
+        assertEquals(3000000L, metrics.plannedUnallocated)
 
-        assertEquals(3000.0, metrics.actualGoalContributions, 0.01)
-        assertEquals(32000.0, metrics.actualUnallocated, 0.01)
+        assertEquals(300000L, metrics.actualGoalContributions)
+        assertEquals(3200000L, metrics.actualUnallocated)
+    }
+
+    @Test
+    fun testNegativeUnallocatedAllocationMetrics() {
+        val commitments = listOf(
+            Commitment(id = 1, name = "Rent", monthlyAmount = 30000L, category = "Housing")
+        )
+
+        val actualContribs = listOf(
+            Contribution(goalId = 1, amount = 25000L, type = "CONTRIBUTION")
+        )
+
+        val metrics = PlannerCalculations.calculateMonthlyAllocations(
+            monthlyIncome = 50000L,
+            commitments = commitments,
+            activeSuggestedGoalContributions = 25000L,
+            actualContributionsThisMonth = actualContribs
+        )
+
+        assertEquals(-5000L, metrics.actualUnallocated)
+        assertEquals(-5000L, metrics.plannedUnallocated)
     }
 }

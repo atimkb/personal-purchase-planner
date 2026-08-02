@@ -245,7 +245,7 @@ fun MainScreen(viewModel: PlannerViewModel) {
             AddContributionDialog(
                 goal = goalForContribution!!,
                 currencySymbol = state.userSettings.currencySymbol,
-                suggestedAmount = 850.0,
+                suggestedAmount = 85000L,
                 onDismiss = { goalForContribution = null },
                 onAddContribution = { contrib ->
                     viewModel.addContribution(contrib)

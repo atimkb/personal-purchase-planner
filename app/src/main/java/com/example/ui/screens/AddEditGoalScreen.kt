@@ -1,10 +1,8 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -51,16 +49,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.data.Goal
 import com.example.ui.theme.DangerRed
-import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.SuccessGreen
 import com.example.ui.theme.WarningAmber
 import com.example.util.PlannerCalculations
@@ -70,13 +64,13 @@ import com.example.util.PlannerCalculations
 fun AddEditGoalScreen(
     currencySymbol: String,
     existingGoal: Goal? = null,
-    availableMonthlyCapacity: Double = 18000.0,
+    availableMonthlyCapacity: Long = 1800000L, // in paise (₹18,000)
     onBackClick: () -> Unit,
     onSaveGoal: (Goal) -> Unit
 ) {
     var name by remember { mutableStateOf(existingGoal?.name ?: "") }
-    var targetPriceText by remember { mutableStateOf(existingGoal?.targetPrice?.toInt()?.toString() ?: "") }
-    var alreadySavedText by remember { mutableStateOf(existingGoal?.alreadySavedAmount?.toInt()?.toString() ?: "0") }
+    var targetPriceText by remember { mutableStateOf(existingGoal?.let { (it.targetPrice / 100L).toString() } ?: "") }
+    var alreadySavedText by remember { mutableStateOf(existingGoal?.let { (it.alreadySavedAmount / 100L).toString() } ?: "0") }
     var targetMonths by remember { mutableIntStateOf(6) }
     var expectedReturn by remember { mutableFloatStateOf(existingGoal?.expectedReturnRate?.toFloat() ?: 8.0f) }
     var selectedCategory by remember { mutableStateOf(existingGoal?.category ?: "Electronics") }
@@ -87,29 +81,29 @@ fun AddEditGoalScreen(
     val priorities = listOf("HIGH", "MEDIUM", "LOW")
     val monthOptions = listOf(3, 6, 12, 18, 24, 36)
 
-    val targetPrice = targetPriceText.toDoubleOrNull() ?: 0.0
-    val alreadySaved = alreadySavedText.toDoubleOrNull() ?: 0.0
+    val targetPricePaise = (targetPriceText.toLongOrNull() ?: 0L) * 100L
+    val alreadySavedPaise = (alreadySavedText.toLongOrNull() ?: 0L) * 100L
 
     // Dynamic Live Calculations based on input
-    val requiredMonthly = PlannerCalculations.calculateMonthlyRequiredContribution(
-        targetPrice = targetPrice,
-        currentValue = alreadySaved,
+    val requiredMonthlyPaise = PlannerCalculations.calculateMonthlyRequiredContribution(
+        targetPrice = targetPricePaise,
+        currentValue = alreadySavedPaise,
         monthsRemaining = maxOf(1, targetMonths),
-        expectedReturnRatePcent = expectedReturn.toDouble()
+        expectedReturnRatePcent = expectedReturn.toLong()
     )
 
-    val projectedFinal = PlannerCalculations.calculateProjectedTargetValue(
-        currentValue = alreadySaved,
-        monthlyContribution = requiredMonthly,
+    val projectedFinalPaise = PlannerCalculations.calculateProjectedTargetValue(
+        currentValue = alreadySavedPaise,
+        monthlyContribution = requiredMonthlyPaise,
         monthsRemaining = maxOf(1, targetMonths),
-        expectedReturnRatePcent = expectedReturn.toDouble()
+        expectedReturnRatePcent = expectedReturn.toLong()
     )
 
-    val totalSavedAndInvested = alreadySaved + (requiredMonthly * targetMonths)
-    val estimatedGrowth = projectedFinal - totalSavedAndInvested
+    val totalSavedAndInvestedPaise = alreadySavedPaise + (requiredMonthlyPaise * targetMonths)
+    val estimatedGrowthPaise = projectedFinalPaise - totalSavedAndInvestedPaise
 
-    val isValid = name.isNotBlank() && targetPrice > 0
-    val exceedsCapacity = requiredMonthly > availableMonthlyCapacity && availableMonthlyCapacity > 0
+    val isValid = name.isNotBlank() && targetPricePaise > 0L
+    val exceedsCapacity = requiredMonthlyPaise > availableMonthlyCapacity && availableMonthlyCapacity > 0L
 
     Scaffold(
         topBar = {
@@ -268,7 +262,7 @@ fun AddEditGoalScreen(
                         }
 
                         // Short Horizon Risk Warning
-                        if (targetMonths <= 6 && expectedReturn > 0.0) {
+                        if (targetMonths <= 6 && expectedReturn > 0f) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = WarningAmber.copy(alpha = 0.15f),
@@ -419,10 +413,10 @@ fun AddEditGoalScreen(
             // Affordability Capacity Warning Card ("Can I afford this goal?")
             if (exceedsCapacity) {
                 item {
-                    val diff = requiredMonthly - availableMonthlyCapacity
-                    // Calculate extended months to fit capacity
-                    val suggestedMonths = if (availableMonthlyCapacity > 0) {
-                        kotlin.math.ceil((targetPrice - alreadySaved) / availableMonthlyCapacity).toInt().coerceAtLeast(targetMonths + 1)
+                    val diffPaise = requiredMonthlyPaise - availableMonthlyCapacity
+                    val suggestedMonths = if (availableMonthlyCapacity > 0L) {
+                        val rem = targetPricePaise - alreadySavedPaise
+                        ((rem + availableMonthlyCapacity - 1L) / availableMonthlyCapacity).toInt().coerceAtLeast(targetMonths + 1)
                     } else targetMonths + 6
 
                     Surface(
@@ -451,7 +445,7 @@ fun AddEditGoalScreen(
                             }
 
                             Text(
-                                text = "Required contribution of ${PlannerCalculations.formatCurrency(requiredMonthly, currencySymbol)}/mo exceeds your available capacity of ${PlannerCalculations.formatCurrency(availableMonthlyCapacity, currencySymbol)}/mo by ${PlannerCalculations.formatCurrency(diff, currencySymbol)}/mo.",
+                                text = "Required contribution of ${PlannerCalculations.formatCurrency(requiredMonthlyPaise, currencySymbol)}/mo exceeds your available capacity of ${PlannerCalculations.formatCurrency(availableMonthlyCapacity, currencySymbol)}/mo by ${PlannerCalculations.formatCurrency(diffPaise, currencySymbol)}/mo.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -510,13 +504,13 @@ fun AddEditGoalScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = PlannerCalculations.formatCurrency(requiredMonthly, currencySymbol) + " / mo",
+                                text = PlannerCalculations.formatCurrency(requiredMonthlyPaise, currencySymbol) + " / mo",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
 
-                        if (estimatedGrowth > 0) {
+                        if (estimatedGrowthPaise > 0L) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -528,7 +522,7 @@ fun AddEditGoalScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = "+" + PlannerCalculations.formatCurrency(estimatedGrowth, currencySymbol),
+                                    text = "+" + PlannerCalculations.formatCurrency(estimatedGrowthPaise, currencySymbol),
                                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                     color = SuccessGreen
                                 )
@@ -546,18 +540,18 @@ fun AddEditGoalScreen(
                             val targetEpoch = System.currentTimeMillis() + (targetMonths.toLong() * 30 * 24 * 60 * 60 * 1000)
                             val goalToSave = existingGoal?.copy(
                                 name = name.trim(),
-                                targetPrice = targetPrice,
-                                alreadySavedAmount = alreadySaved,
+                                targetPrice = targetPricePaise,
+                                alreadySavedAmount = alreadySavedPaise,
                                 targetDateEpochMillis = targetEpoch,
-                                expectedReturnRate = expectedReturn.toDouble(),
+                                expectedReturnRate = expectedReturn.toLong(),
                                 category = selectedCategory,
                                 priority = selectedPriority
                             ) ?: Goal(
                                 name = name.trim(),
-                                targetPrice = targetPrice,
-                                alreadySavedAmount = alreadySaved,
+                                targetPrice = targetPricePaise,
+                                alreadySavedAmount = alreadySavedPaise,
                                 targetDateEpochMillis = targetEpoch,
-                                expectedReturnRate = expectedReturn.toDouble(),
+                                expectedReturnRate = expectedReturn.toLong(),
                                 category = selectedCategory,
                                 priority = selectedPriority
                             )
@@ -575,7 +569,7 @@ fun AddEditGoalScreen(
                     Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (existingGoal == null) "Create Goal (${PlannerCalculations.formatCurrency(requiredMonthly, currencySymbol)}/mo)" else "Save Changes",
+                        text = if (existingGoal == null) "Create Goal (${PlannerCalculations.formatCurrency(requiredMonthlyPaise, currencySymbol)}/mo)" else "Save Changes",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }

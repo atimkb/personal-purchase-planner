@@ -7,6 +7,6 @@ import androidx.room.PrimaryKey
 data class Commitment(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val monthlyAmount: Double,
+    val monthlyAmount: Long, // in paise
     val category: String = "Subscriptions" // "Subscriptions", "Commitments", "Other"
 )

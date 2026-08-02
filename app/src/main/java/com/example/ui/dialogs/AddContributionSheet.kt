@@ -1,9 +1,7 @@
 package com.example.ui.dialogs
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -44,7 +42,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.Contribution
 import com.example.data.Goal
@@ -56,11 +53,11 @@ import com.example.util.PlannerCalculations
 fun AddContributionDialog(
     goal: Goal,
     currencySymbol: String,
-    suggestedAmount: Double = 850.0,
+    suggestedAmount: Long = 85000L, // in paise (₹850)
     onDismiss: () -> Unit,
     onAddContribution: (Contribution) -> Unit
 ) {
-    var amountText by remember { mutableStateOf(suggestedAmount.toInt().toString()) }
+    var amountText by remember { mutableStateOf((suggestedAmount / 100L).toString()) }
     var selectedType by remember { mutableStateOf("Savings") }
     var noteText by remember { mutableStateOf("") }
 
@@ -160,15 +157,16 @@ fun AddContributionDialog(
 
                 // Quick Add Chips
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val add500 = (amountText.toDoubleOrNull() ?: 0.0) + 500
-                    val add1000 = (amountText.toDoubleOrNull() ?: 0.0) + 1000
+                    val currentValRupees = amountText.toLongOrNull() ?: 0L
+                    val add500 = currentValRupees + 500L
+                    val add1000 = currentValRupees + 1000L
 
                     Surface(
                         shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .clickable { amountText = add500.toInt().toString() }
+                            .clickable { amountText = add500.toString() }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text("+$currencySymbol 500", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -179,7 +177,7 @@ fun AddContributionDialog(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .clickable { amountText = add1000.toInt().toString() }
+                            .clickable { amountText = add1000.toString() }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text("+$currencySymbol 1,000", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -265,14 +263,15 @@ fun AddContributionDialog(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Submit Button
-                val parsedAmount = amountText.toDoubleOrNull() ?: 0.0
+                val rupeesVal = amountText.toLongOrNull() ?: 0L
+                val paiseVal = rupeesVal * 100L
                 Button(
                     onClick = {
-                        if (parsedAmount > 0) {
+                        if (paiseVal > 0L) {
                             onAddContribution(
                                 Contribution(
                                     goalId = goal.id,
-                                    amount = parsedAmount,
+                                    amount = paiseVal,
                                     dateEpochMillis = System.currentTimeMillis(),
                                     investmentType = selectedType,
                                     note = noteText.ifBlank { null }
@@ -280,7 +279,7 @@ fun AddContributionDialog(
                             )
                         }
                     },
-                    enabled = parsedAmount > 0,
+                    enabled = paiseVal > 0L,
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier
@@ -289,7 +288,7 @@ fun AddContributionDialog(
                         .testTag("submit_contribution_btn")
                 ) {
                     Text(
-                        text = "Add ${PlannerCalculations.formatCurrency(parsedAmount, currencySymbol)}",
+                        text = "Add ${PlannerCalculations.formatCurrency(paiseVal, currencySymbol)}",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }

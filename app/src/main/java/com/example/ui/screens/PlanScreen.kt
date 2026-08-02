@@ -23,9 +23,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Autorenew
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
@@ -38,15 +37,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,17 +51,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.Commitment
 import com.example.ui.PlannerUiState
 import com.example.ui.components.GoalCategoryIcon
+import com.example.ui.components.MoneyText
+import com.example.ui.components.MetricCard
+import com.example.ui.components.StatusBadge
+import com.example.ui.components.EmptyState
+import com.example.ui.components.SectionHeader
 import com.example.ui.theme.DangerRed
+import kotlin.math.abs
 import com.example.ui.theme.SuccessGreen
-import com.example.ui.theme.WarningAmber
 import com.example.util.PlannerCalculations
 
 @Composable
@@ -198,13 +197,11 @@ fun GoalTimelineForecastView(state: PlannerUiState) {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "No active goals found. Create your first goal to see your purchase timeline!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    EmptyState(
+                        icon = Icons.Default.CalendarMonth,
+                        title = "No Active Goals",
+                        description = "No active goals found. Create your first goal to see your purchase timeline!"
+                    )
                 }
             }
         } else {
@@ -244,9 +241,7 @@ fun GoalTimelineForecastView(state: PlannerUiState) {
                                     Text(
                                         text = goal.name,
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = "${PlannerCalculations.formatCurrency(goalCalc.currentValue, currencySymbol)} / ${PlannerCalculations.formatCurrency(goal.targetPrice, currencySymbol)}",
@@ -256,18 +251,12 @@ fun GoalTimelineForecastView(state: PlannerUiState) {
                                 }
                             }
 
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (isReady) SuccessGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primaryContainer,
+                            StatusBadge(
+                                label = if (isReady) "READY" else targetMonthYearStr,
+                                containerColor = if (isReady) SuccessGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = if (isReady) SuccessGreen else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(start = 8.dp)
-                            ) {
-                                Text(
-                                    text = if (isReady) "READY" else targetMonthYearStr,
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = if (isReady) SuccessGreen else MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
+                            )
                         }
 
                         // Horizontal Timeline Visual Bar
@@ -345,14 +334,15 @@ fun IncomeScenarioPlannerView(state: PlannerUiState) {
     val totalCommitments = state.dashboardSummary.totalCommitments
     val totalGoalAllocations = state.dashboardSummary.totalGoalAllocations
 
-    var scenarioIncomeInput by remember { mutableStateOf((currentIncome * 1.25).toInt().toString()) }
-    val scenarioIncome = scenarioIncomeInput.toDoubleOrNull() ?: currentIncome
+    var scenarioIncomeInput by remember { mutableStateOf((((currentIncome * 125L) / 100L) / 100L).toString()) }
+    val scenarioIncomeRupees = scenarioIncomeInput.toLongOrNull() ?: (currentIncome / 100L)
+    val scenarioIncomePaise = scenarioIncomeRupees * 100L
 
     val currentSurplus = currentIncome - totalCommitments - totalGoalAllocations
-    val currentGoalRatio = if (currentIncome > 0) (totalGoalAllocations / currentIncome) * 100 else 0.0
+    val currentGoalRatio = if (currentIncome > 0L) (totalGoalAllocations * 100L) / currentIncome else 0L
 
-    val scenarioSurplus = scenarioIncome - totalCommitments - totalGoalAllocations
-    val scenarioGoalRatio = if (scenarioIncome > 0) (totalGoalAllocations / scenarioIncome) * 100 else 0.0
+    val scenarioSurplus = scenarioIncomePaise - totalCommitments - totalGoalAllocations
+    val scenarioGoalRatio = if (scenarioIncomePaise > 0L) (totalGoalAllocations * 100L) / scenarioIncomePaise else 0L
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -424,7 +414,7 @@ fun IncomeScenarioPlannerView(state: PlannerUiState) {
                     ComparisonRow(
                         label = "Monthly Income",
                         currentVal = PlannerCalculations.formatCurrency(currentIncome, currencySymbol),
-                        scenarioVal = PlannerCalculations.formatCurrency(scenarioIncome, currencySymbol),
+                        scenarioVal = PlannerCalculations.formatCurrency(scenarioIncomePaise, currencySymbol),
                         isScenarioHighlight = true
                     )
 
@@ -443,8 +433,8 @@ fun IncomeScenarioPlannerView(state: PlannerUiState) {
 
                     ComparisonRow(
                         label = "Goal Allocation %",
-                        currentVal = "${currentGoalRatio.toInt()}%",
-                        scenarioVal = "${scenarioGoalRatio.toInt()}%",
+                        currentVal = "$currentGoalRatio%",
+                        scenarioVal = "$scenarioGoalRatio%",
                         isScenarioHighlight = true
                     )
                 }
@@ -471,10 +461,10 @@ fun IncomeScenarioPlannerView(state: PlannerUiState) {
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = if (scenarioIncome > currentIncome) {
-                            "Increasing income to ${PlannerCalculations.formatCurrency(scenarioIncome, currencySymbol)} gives you ${PlannerCalculations.formatCurrency(scenarioSurplus - currentSurplus, currencySymbol)} extra monthly surplus to accelerate your goals!"
+                        text = if (scenarioIncomePaise > currentIncome) {
+                            "Increasing income to ${PlannerCalculations.formatCurrency(scenarioIncomePaise, currencySymbol)} gives you ${PlannerCalculations.formatCurrency(scenarioSurplus - currentSurplus, currencySymbol)} extra monthly surplus to accelerate your goals!"
                         } else {
-                            "At ${PlannerCalculations.formatCurrency(scenarioIncome, currencySymbol)}, your goals account for ${scenarioGoalRatio.toInt()}% of income."
+                            "At ${PlannerCalculations.formatCurrency(scenarioIncomePaise, currencySymbol)}, your goals account for $scenarioGoalRatio% of income."
                         },
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -557,8 +547,9 @@ fun MonthlyPlanView(
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                         )
-                        Text(
-                            text = PlannerCalculations.formatCurrency(summary.monthlyIncome, state.userSettings.currencySymbol),
+                        MoneyText(
+                            amountInPaise = summary.monthlyIncome,
+                            currencySymbol = state.userSettings.currencySymbol,
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -594,11 +585,7 @@ fun MonthlyPlanView(
 
         // Allocations Header
         item {
-            Text(
-                text = "Goal Allocations",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            SectionHeader(title = "Goal Allocations")
         }
 
         items(state.activeGoals) { goalCalc ->
@@ -630,20 +617,17 @@ fun MonthlyPlanView(
                         Text(
                             text = goalCalc.goal.name,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    Text(
-                        text = PlannerCalculations.formatCurrency(goalCalc.suggestedMonthlyContribution, state.userSettings.currencySymbol),
+                    MoneyText(
+                        amountInPaise = goalCalc.suggestedMonthlyContribution,
+                        currencySymbol = state.userSettings.currencySymbol,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        softWrap = false
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -660,9 +644,7 @@ fun MonthlyPlanView(
                     text = "Commitments & Subscriptions",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.weight(1f)
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -698,11 +680,10 @@ fun MonthlyPlanView(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "No custom commitments added. Click 'Add' above to track your fixed bills or subscriptions!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp)
+                    EmptyState(
+                        icon = Icons.Default.Autorenew,
+                        title = "No Custom Commitments",
+                        description = "No custom commitments added. Click 'Add' above to track your fixed bills or subscriptions!"
                     )
                 }
             }
@@ -743,21 +724,18 @@ fun MonthlyPlanView(
                             Text(
                                 text = commitment.name,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = PlannerCalculations.formatCurrency(commitment.monthlyAmount, state.userSettings.currencySymbol),
+                            MoneyText(
+                                amountInPaise = commitment.monthlyAmount,
+                                currencySymbol = state.userSettings.currencySymbol,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                softWrap = false
+                                color = MaterialTheme.colorScheme.onSurface
                             )
 
                             IconButton(onClick = { onDeleteCommitment(commitment.id) }) {
@@ -808,18 +786,28 @@ fun MonthlyPlanView(
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 
+                    val isOver = summary.availableThisMonth < 0L || summary.isOverAllocated
+                    val currency = state.userSettings.currencySymbol
                     DetailStatRow(
-                        label = "Unallocated Surplus Cash",
-                        value = PlannerCalculations.formatCurrency(summary.availableThisMonth, state.userSettings.currencySymbol),
-                        valueColor = if (summary.availableThisMonth >= 0) SuccessGreen else DangerRed
+                        label = if (isOver) "Over-Committed Amount" else "Unallocated Surplus Cash",
+                        value = if (isOver) {
+                            "You're ${PlannerCalculations.formatCurrency(abs(summary.availableThisMonth), currency)} over-committed"
+                        } else {
+                            PlannerCalculations.formatCurrency(summary.availableThisMonth, currency)
+                        },
+                        valueColor = if (isOver) DangerRed else SuccessGreen
                     )
                 }
             }
         }
 
-        // Limit Warning
-        if (summary.isOverAllocated) {
+        // Limit Warning Banner
+        if (summary.isOverAllocated || summary.availableThisMonth < 0L) {
             item {
+                val overAmount = PlannerCalculations.formatCurrency(
+                    abs(summary.availableThisMonth),
+                    state.userSettings.currencySymbol
+                )
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
@@ -832,11 +820,19 @@ fun MonthlyPlanView(
                     ) {
                         Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Warning: Your monthly allocations exceed your income! Pause or extend lower-priority goals to stay balanced.",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
+                        Column {
+                            Text(
+                                text = "You're $overAmount over-committed this month",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Your monthly commitments and goal contributions exceed your income! Pause or extend lower-priority goals to stay balanced.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f)
+                            )
+                        }
                     }
                 }
             }
@@ -895,8 +891,9 @@ fun AddCommitmentDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                val amount = amountText.toDoubleOrNull() ?: 0.0
-                val isValid = name.isNotBlank() && amount > 0
+                val amountRupees = amountText.toLongOrNull() ?: 0L
+                val amountPaise = amountRupees * 100L
+                val isValid = name.isNotBlank() && amountPaise > 0L
 
                 Button(
                     onClick = {
@@ -904,7 +901,7 @@ fun AddCommitmentDialog(
                             onAddCommitment(
                                 Commitment(
                                     name = name.trim(),
-                                    monthlyAmount = amount,
+                                    monthlyAmount = amountPaise,
                                     category = selectedCategory
                                 )
                             )

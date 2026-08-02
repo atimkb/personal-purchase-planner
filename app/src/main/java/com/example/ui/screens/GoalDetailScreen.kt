@@ -1,10 +1,6 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,7 +22,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -239,8 +234,8 @@ fun GoalDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    val fundingPct = if (goal.targetPrice > 0) ((goalCalc.totalContributed / goal.targetPrice) * 100).toInt() else 0
-                    val valuePct = if (goal.targetPrice > 0) ((goalCalc.currentValue / goal.targetPrice) * 100).toInt() else 0
+                    val fundingPct = if (goal.targetPrice > 0L) ((goalCalc.totalContributed * 100L) / goal.targetPrice).toInt() else 0
+                    val valuePct = if (goal.targetPrice > 0L) ((goalCalc.currentValue * 100L) / goal.targetPrice).toInt() else 0
 
                     DetailStatRow(
                         label = "Funding Progress (Contributed)",
@@ -253,7 +248,7 @@ fun GoalDetailScreen(
                         valueColor = MaterialTheme.colorScheme.primary
                     )
 
-                    val isGainPositive = goalCalc.gainAmount >= 0
+                    val isGainPositive = goalCalc.gainAmount >= 0L
                     val gainText = "${if (isGainPositive) "+" else ""}${PlannerCalculations.formatCurrency(goalCalc.gainAmount, currencySymbol)} investment ${if (isGainPositive) "gain" else "loss"}"
                     DetailStatRow(
                         label = "Investment Return",
@@ -294,7 +289,7 @@ fun GoalDetailScreen(
                         value = PlannerCalculations.formatCurrency(goal.targetPrice, currencySymbol)
                     )
 
-                    val isSurplus = goalCalc.expectedSurplusOrShortfall >= 0
+                    val isSurplus = goalCalc.expectedSurplusOrShortfall >= 0L
                     val surplusText = "${if (isSurplus) "+" else ""}${PlannerCalculations.formatCurrency(goalCalc.expectedSurplusOrShortfall, currencySymbol)}"
                     DetailStatRow(
                         label = if (isSurplus) "Expected surplus" else "Expected shortfall",

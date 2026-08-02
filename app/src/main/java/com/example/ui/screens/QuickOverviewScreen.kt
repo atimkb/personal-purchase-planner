@@ -67,9 +67,16 @@ import androidx.compose.ui.unit.sp
 import com.example.data.Commitment
 import com.example.ui.GoalWithCalculations
 import com.example.ui.PlannerUiState
+import com.example.ui.components.MoneyText
+import com.example.ui.components.MetricCard
+import com.example.ui.components.StatusBadge
+import com.example.ui.components.EmptyState
+import com.example.ui.components.SectionHeader
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.SuccessGreen
 import com.example.ui.theme.WarningAmber
+import com.example.ui.theme.DangerRed
+import kotlin.math.abs
 import com.example.util.PlannerCalculations
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,13 +93,13 @@ fun QuickOverviewScreen(
 
     // Interactive Income Simulator state
     var simulatedIncomeFactor by remember { mutableFloatStateOf(1.0f) }
-    val income = baseIncome * simulatedIncomeFactor
+    val income = (baseIncome.toDouble() * simulatedIncomeFactor.toDouble()).toLong()
 
-    val goalPcent = if (income > 0) ((summary.totalGoalAllocations / income) * 100).toInt() else 0
-    val commitPcent = if (income > 0) ((summary.totalCommitments / income) * 100).toInt() else 0
-    val otherPcent = if (income > 0) ((summary.totalOtherAllocations / income) * 100).toInt() else 0
+    val goalPcent = if (income > 0L) ((summary.totalGoalAllocations * 100L) / income).toInt() else 0
+    val commitPcent = if (income > 0L) ((summary.totalCommitments * 100L) / income).toInt() else 0
+    val otherPcent = if (income > 0L) ((summary.totalOtherAllocations * 100L) / income).toInt() else 0
     val unallocated = income - summary.totalAllocated
-    val unallocatedPcent = if (income > 0) maxOf(0, ((unallocated / income) * 100).toInt()) else 100
+    val unallocatedPcent = if (income > 0L) ((unallocated * 100L) / income).toInt() else 100
 
     Scaffold(
         topBar = {
@@ -152,13 +159,11 @@ fun QuickOverviewScreen(
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Text(
-                                    text = PlannerCalculations.formatCurrency(income, currency),
+                                MoneyText(
+                                    amountInPaise = income,
+                                    currencySymbol = currency,
                                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
 
@@ -197,7 +202,7 @@ fun QuickOverviewScreen(
                                     val topLeft = Offset(strokeWidth / 2, strokeWidth / 2)
                                     val arcSize = Size(diameter, diameter)
 
-                                    if (income <= 0 || summary.totalAllocated <= 0) {
+                                    if (income <= 0L || summary.totalAllocated <= 0L) {
                                         drawArc(
                                             color = Color.LightGray.copy(alpha = 0.4f),
                                             startAngle = 0f,
@@ -208,9 +213,9 @@ fun QuickOverviewScreen(
                                     } else {
                                         var currentAngle = -90f
 
-                                        val gFraction = (summary.totalGoalAllocations / income).toFloat().coerceIn(0f, 1f)
-                                        val cFraction = (summary.totalCommitments / income).toFloat().coerceIn(0f, 1f)
-                                        val oFraction = (summary.totalOtherAllocations / income).toFloat().coerceIn(0f, 1f)
+                                        val gFraction = if (income > 0L) summary.totalGoalAllocations.toFloat() / income.toFloat() else 0f
+                                        val cFraction = if (income > 0L) summary.totalCommitments.toFloat() / income.toFloat() else 0f
+                                        val oFraction = if (income > 0L) summary.totalOtherAllocations.toFloat() / income.toFloat() else 0f
                                         val uFraction = maxOf(0f, 1f - (gFraction + cFraction + oFraction))
 
                                         if (gFraction > 0f) {
@@ -255,7 +260,11 @@ fun QuickOverviewScreen(
                                 OverviewLegendItem(color = EmeraldPrimary, label = "Goals ($goalPcent%)", amount = PlannerCalculations.formatCurrency(summary.totalGoalAllocations, currency))
                                 OverviewLegendItem(color = SuccessGreen, label = "Commitments ($commitPcent%)", amount = PlannerCalculations.formatCurrency(summary.totalCommitments, currency))
                                 OverviewLegendItem(color = WarningAmber, label = "Other ($otherPcent%)", amount = PlannerCalculations.formatCurrency(summary.totalOtherAllocations, currency))
-                                OverviewLegendItem(color = Color.Gray, label = "Unallocated ($unallocatedPcent%)", amount = PlannerCalculations.formatCurrency(maxOf(0.0, unallocated), currency))
+                                OverviewLegendItem(
+                                    color = if (unallocated < 0L) DangerRed else Color.Gray,
+                                    label = if (unallocated < 0L) "Over-committed ($unallocatedPcent%)" else "Unallocated ($unallocatedPcent%)",
+                                    amount = PlannerCalculations.formatCurrency(unallocated, currency)
+                                )
                             }
                         }
 
@@ -282,20 +291,25 @@ fun QuickOverviewScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = if (summary.isOverAllocated) "Over-allocated Budget" else "Unallocated Monthly Surplus",
+                                        text = if (unallocated < 0L) {
+                                            "You're ${PlannerCalculations.formatCurrency(abs(unallocated), currency)} over-committed this month"
+                                        } else if (summary.isOverAllocated) {
+                                            "Over-allocated Budget"
+                                        } else {
+                                            "Unallocated Monthly Surplus"
+                                        },
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
+                                        color = if (unallocated < 0L || summary.isOverAllocated) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = PlannerCalculations.formatCurrency(unallocated, currency),
+                                MoneyText(
+                                    amountInPaise = unallocated,
+                                    currencySymbol = currency,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = if (summary.isOverAllocated) MaterialTheme.colorScheme.error else SuccessGreen,
-                                    maxLines = 1,
-                                    softWrap = false
+                                    color = if (summary.isOverAllocated) MaterialTheme.colorScheme.error else SuccessGreen
                                 )
                             }
                         }
@@ -385,8 +399,8 @@ fun QuickOverviewScreen(
 
                         // Project wealth curve based on active SIPs
                         val monthlyGoalInvest = summary.totalGoalAllocations
-                        val projected12Mos = PlannerCalculations.calculateProjectedTargetValue(0.0, monthlyGoalInvest, 12, 9.0)
-                        val projected36Mos = PlannerCalculations.calculateProjectedTargetValue(0.0, monthlyGoalInvest, 36, 9.0)
+                        val projected12Mos = PlannerCalculations.calculateProjectedTargetValue(0L, monthlyGoalInvest, 12, 9L)
+                        val projected36Mos = PlannerCalculations.calculateProjectedTargetValue(0L, monthlyGoalInvest, 36, 9L)
 
                         Text(
                             text = "Projected accumulation: ${PlannerCalculations.formatCurrency(projected12Mos, currency)} (1 yr) • ${PlannerCalculations.formatCurrency(projected36Mos, currency)} (3 yrs)",
@@ -520,7 +534,8 @@ fun QuickOverviewScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
 
-                        val savingsRatePcent = if (income > 0) (((summary.totalGoalAllocations + maxOf(0.0, unallocated)) / income) * 100).toInt() else 0
+                        val netSavingsPaise = summary.totalGoalAllocations + unallocated
+                        val savingsRatePcent = if (income > 0L) ((netSavingsPaise * 100L) / income).toInt() else 0
                         HealthMetricRow(
                             label = "Goal Investment Ratio",
                             value = "$goalPcent%",
@@ -568,9 +583,7 @@ fun OverviewLegendItem(color: Color, label: String, amount: String) {
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Spacer(modifier = Modifier.width(6.dp))
@@ -578,9 +591,7 @@ fun OverviewLegendItem(color: Color, label: String, amount: String) {
             text = amount,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            softWrap = false
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -619,16 +630,12 @@ fun ReviewSectionHeader(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -636,9 +643,7 @@ fun ReviewSectionHeader(
             Text(
                 text = amount,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                softWrap = false
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -651,11 +656,8 @@ fun EmptyReviewCard(message: String) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(16.dp)
+        EmptyState(
+            description = message
         )
     }
 }
@@ -678,33 +680,27 @@ fun GoalReviewRowItem(goalCalc: GoalWithCalculations, currency: String) {
                 Text(
                     text = goalCalc.goal.name,
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Target: ${PlannerCalculations.formatCurrency(goalCalc.goal.targetPrice, currency)} • ${goalCalc.monthsRemaining} mos remaining",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "${PlannerCalculations.formatCurrency(goalCalc.suggestedMonthlyContribution, currency)} / mo",
+                MoneyText(
+                    amountInPaise = goalCalc.suggestedMonthlyContribution,
+                    currencySymbol = currency,
+                    suffix = " / mo",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    softWrap = false
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = "${goalCalc.goal.expectedReturnRate.toInt()}% return rate",
                     style = MaterialTheme.typography.labelSmall,
-                    color = SuccessGreen,
-                    maxLines = 1,
-                    softWrap = false
+                    color = SuccessGreen
                 )
             }
         }
@@ -733,28 +729,24 @@ fun DeletableCommitmentRow(
                 Text(
                     text = commitment.name,
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = commitment.category,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "${PlannerCalculations.formatCurrency(commitment.monthlyAmount, currency)} / mo",
+                MoneyText(
+                    amountInPaise = commitment.monthlyAmount,
+                    currencySymbol = currency,
+                    suffix = " / mo",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    softWrap = false
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(onClick = onDeleteClick) {

@@ -31,7 +31,7 @@ class PlannerRepository(private val dao: PlannerDao) {
         val defaultUser = UserSettings(
             id = 1,
             userName = "Amit",
-            monthlyIncome = 50000.0,
+            monthlyIncome = 5000000L, // ₹50,000 in paise
             currencySymbol = "₹",
             themeMode = "SYSTEM"
         )
@@ -47,33 +47,33 @@ class PlannerRepository(private val dao: PlannerDao) {
             Goal(
                 id = 1,
                 name = "Ice Cream Maker",
-                targetPrice = 5000.0,
+                targetPrice = 500000L, // ₹5,000
                 targetDateEpochMillis = System.currentTimeMillis() + (180L * 24 * 60 * 60 * 1000),
-                alreadySavedAmount = 0.0,
+                alreadySavedAmount = 0L,
                 category = "Kitchen",
                 priority = "MEDIUM",
-                expectedReturnRate = 8.0,
-                status = "ACTIVE",
-                currentManualValue = 3280.0
+                expectedReturnRate = 8L,
+                status = "ACTIVE"
             ),
             Goal(
                 id = 2,
                 name = "Laptop",
-                targetPrice = 60000.0,
+                targetPrice = 6000000L, // ₹60,000
                 targetDateEpochMillis = System.currentTimeMillis() + (300L * 24 * 60 * 60 * 1000),
-                alreadySavedAmount = 0.0,
+                alreadySavedAmount = 0L,
                 category = "Electronics",
                 priority = "HIGH",
-                expectedReturnRate = 10.0,
-                status = "ACTIVE",
-                currentManualValue = 18900.0
+                expectedReturnRate = 10L,
+                status = "ACTIVE"
             )
         )
 
         val contributions = listOf(
-            Contribution(goalId = 1, amount = 850.0, investmentType = "Savings", note = "July savings contribution"),
-            Contribution(goalId = 1, amount = 800.0, investmentType = "Mutual Fund", note = "June SIP"),
-            Contribution(goalId = 2, amount = 4000.0, investmentType = "Mutual Fund", note = "Laptop SIP")
+            Contribution(goalId = 1, amount = 85000L, investmentType = "Savings", note = "July savings contribution"), // ₹850
+            Contribution(goalId = 1, amount = 80000L, investmentType = "Mutual Fund", note = "June SIP"), // ₹800
+            Contribution(goalId = 1, amount = 328000L, investmentType = "Mutual Fund", type = "VALUE_UPDATE", note = "Current portfolio value update"), // ₹3,280
+            Contribution(goalId = 2, amount = 400000L, investmentType = "Mutual Fund", note = "Laptop SIP"), // ₹4,000
+            Contribution(goalId = 2, amount = 1890000L, investmentType = "Mutual Fund", type = "VALUE_UPDATE", note = "Current portfolio value update") // ₹18,900
         )
 
         goals.forEach { dao.insertGoal(it) }

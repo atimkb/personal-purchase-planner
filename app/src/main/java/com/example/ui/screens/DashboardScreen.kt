@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -32,7 +31,10 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Warning
 import com.example.ui.theme.EmeraldPrimary
+import com.example.ui.theme.DangerRed
+import kotlin.math.abs
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -65,7 +67,11 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.GoalWithCalculations
 import com.example.ui.PlannerUiState
 import com.example.ui.components.GoalCategoryIcon
-import com.example.ui.theme.IndigoPrimary
+import com.example.ui.components.MoneyText
+import com.example.ui.components.MetricCard
+import com.example.ui.components.StatusBadge
+import com.example.ui.components.EmptyState
+import com.example.ui.components.SectionHeader
 import com.example.ui.theme.SuccessGreen
 import com.example.util.PlannerCalculations
 import java.util.Calendar
@@ -201,18 +207,13 @@ fun DashboardScreen(
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Text(
-                                    text = PlannerCalculations.formatCurrency(
-                                        state.dashboardSummary.monthlyIncome,
-                                        state.userSettings.currencySymbol
-                                    ),
+                                MoneyText(
+                                    amountInPaise = state.dashboardSummary.monthlyIncome,
+                                    currencySymbol = state.userSettings.currencySymbol,
                                     style = MaterialTheme.typography.headlineMedium.copy(
                                         fontWeight = FontWeight.ExtraBold
                                     ),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
 
@@ -253,20 +254,21 @@ fun DashboardScreen(
                             }
                         }
 
+                        val isOverAllocated = state.dashboardSummary.availableThisMonth < 0L || state.dashboardSummary.isOverAllocated
                         Column {
                             Text(
-                                text = "Available this month",
+                                text = if (isOverAllocated) "Over-committed this month" else "Available this month",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (isOverAllocated) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text(
-                                text = PlannerCalculations.formatCurrency(
-                                    state.dashboardSummary.availableThisMonth,
-                                    state.userSettings.currencySymbol
-                                ),
+                            MoneyText(
+                                amountInPaise = if (isOverAllocated) abs(state.dashboardSummary.availableThisMonth) else state.dashboardSummary.availableThisMonth,
+                                currencySymbol = state.userSettings.currencySymbol,
+                                prefix = if (isOverAllocated) "You're " else "",
+                                suffix = if (isOverAllocated) " over-committed" else "",
                                 style = MaterialTheme.typography.headlineLarge.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = if (isOverAllocated) DangerRed else MaterialTheme.colorScheme.primary
                                 )
                             )
                         }
@@ -290,11 +292,9 @@ fun DashboardScreen(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Text(
-                                    text = PlannerCalculations.formatCurrency(
-                                        state.dashboardSummary.totalAllocated,
-                                        state.userSettings.currencySymbol
-                                    ),
+                                MoneyText(
+                                    amountInPaise = state.dashboardSummary.totalAllocated,
+                                    currencySymbol = state.userSettings.currencySymbol,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -309,17 +309,56 @@ fun DashboardScreen(
 
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = "Remaining",
+                                    text = if (isOverAllocated) "Over-committed" else "Remaining",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (isOverAllocated) DangerRed else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Text(
-                                    text = PlannerCalculations.formatCurrency(
-                                        state.dashboardSummary.availableThisMonth,
-                                        state.userSettings.currencySymbol
-                                    ),
+                                MoneyText(
+                                    amountInPaise = state.dashboardSummary.availableThisMonth,
+                                    currencySymbol = state.userSettings.currencySymbol,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = if (isOverAllocated) DangerRed else MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Over-allocation Warning Banner
+            if (state.dashboardSummary.availableThisMonth < 0L) {
+                item {
+                    val overAmount = PlannerCalculations.formatCurrency(
+                        abs(state.dashboardSummary.availableThisMonth),
+                        state.userSettings.currencySymbol
+                    )
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Warning",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "You're $overAmount over-committed this month",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Your fixed commitments and goal contributions exceed your monthly income. Lower goal SIPs or reduce recurring expenses to balance your budget.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.9f)
                                 )
                             }
                         }
@@ -335,27 +374,18 @@ fun DashboardScreen(
             // Quick Overview Section
             item {
                 Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Quick Overview",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        TextButton(onClick = onViewAllOverviewClick) {
-                            Text("View All", style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
+                    SectionHeader(
+                        title = "Quick Overview",
+                        actionText = "View All",
+                        onActionClick = onViewAllOverviewClick
+                    )
 
                     Spacer(modifier = Modifier.height(4.dp))
 
                     val income = state.dashboardSummary.monthlyIncome
-                    val goalPcent = if (income > 0) ((state.dashboardSummary.totalGoalAllocations / income) * 100).toInt() else 0
-                    val commitPcent = if (income > 0) ((state.dashboardSummary.totalCommitments / income) * 100).toInt() else 0
-                    val otherPcent = if (income > 0) ((state.dashboardSummary.totalOtherAllocations / income) * 100).toInt() else 0
+                    val goalPcent = if (income > 0L) ((state.dashboardSummary.totalGoalAllocations * 100L) / income).toInt() else 0
+                    val commitPcent = if (income > 0L) ((state.dashboardSummary.totalCommitments * 100L) / income).toInt() else 0
+                    val otherPcent = if (income > 0L) ((state.dashboardSummary.totalOtherAllocations * 100L) / income).toInt() else 0
 
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OverviewItemRow(
@@ -402,24 +432,11 @@ fun DashboardScreen(
 
             // YOUR GOALS Section
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "YOUR GOALS",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    TextButton(onClick = onNewGoalClick) {
-                        Text("+ New Goal", fontWeight = FontWeight.Bold)
-                    }
-                }
+                SectionHeader(
+                    title = "YOUR GOALS",
+                    actionText = "+ New Goal",
+                    onActionClick = onNewGoalClick
+                )
             }
 
             if (state.activeGoals.isEmpty()) {
@@ -431,38 +448,13 @@ fun DashboardScreen(
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(24.dp)
-                                .fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Flag,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                            )
-                            Text(
-                                text = "No Purchase Goals Active",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Set up your target purchase, monthly budget, and growth timeline to calculate your exact required savings!",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Button(
-                                onClick = onNewGoalClick,
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Create Your First Goal", fontWeight = FontWeight.Bold)
-                            }
-                        }
+                        EmptyState(
+                            icon = Icons.Default.Flag,
+                            title = "No Purchase Goals Active",
+                            description = "Set up your target purchase, monthly budget, and growth timeline to calculate your exact required savings!",
+                            actionLabel = "Create Your First Goal",
+                            onActionClick = onNewGoalClick
+                        )
                     }
                 }
             } else {
@@ -544,16 +536,12 @@ fun OverviewItemRow(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -609,16 +597,12 @@ fun DashboardGoalCard(
                         Text(
                             text = goalCalc.goal.name,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "${PlannerCalculations.formatCurrency(goalCalc.currentValue, currencySymbol)} / ${PlannerCalculations.formatCurrency(goalCalc.goal.targetPrice, currencySymbol)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -723,16 +707,12 @@ fun IncomeVsGoalDistributionChart(
                         Text(
                             text = "Income & Goal Distribution",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Income allocation vs target goal completion",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -745,21 +725,20 @@ fun IncomeVsGoalDistributionChart(
                     color = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
-                    Text(
-                        text = PlannerCalculations.formatCurrency(income, currency),
+                    MoneyText(
+                        amountInPaise = income,
+                        currencySymbol = currency,
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        maxLines = 1,
-                        softWrap = false
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     )
                 }
             }
 
             // High Contrast Legend Badges
-            val goalPcent = if (income > 0) ((summary.totalGoalAllocations / income) * 100).toInt() else 0
-            val commitPcent = if (income > 0) ((summary.totalCommitments / income) * 100).toInt() else 0
+            val goalPcent = if (income > 0L) ((summary.totalGoalAllocations * 100L) / income).toInt() else 0
+            val commitPcent = if (income > 0L) ((summary.totalCommitments * 100L) / income).toInt() else 0
             val unallocated = income - summary.totalAllocated
-            val unallocatedPcent = if (income > 0) maxOf(0, ((unallocated / income) * 100).toInt()) else 100
+            val unallocatedPcent = if (income > 0L) ((unallocated * 100L) / income).toInt() else 100
 
             FlowRow(
                 modifier = Modifier
@@ -783,16 +762,16 @@ fun IncomeVsGoalDistributionChart(
                     color = SuccessGreen
                 )
                 ChartLegendPill(
-                    label = "Surplus",
+                    label = if (unallocated < 0L) "Over-committed" else "Surplus",
                     value = "$unallocatedPcent%",
-                    color = Color(0xFFEAB308)
+                    color = if (unallocated < 0L) DangerRed else Color(0xFFEAB308)
                 )
             }
 
             // High-Contrast Stacked Allocation Bar Chart Visualization
-            val goalWeight = if (income > 0) (summary.totalGoalAllocations / income).toFloat().coerceIn(0f, 1f) else 0f
-            val commitWeight = if (income > 0) (summary.totalCommitments / income).toFloat().coerceIn(0f, 1f) else 0f
-            val surplusWeight = if (income > 0) ((income - summary.totalAllocated) / income).toFloat().coerceAtLeast(0f) else 1f
+            val goalWeight = if (income > 0L) (summary.totalGoalAllocations.toFloat() / income.toFloat()).coerceIn(0f, 1f) else 0f
+            val commitWeight = if (income > 0L) (summary.totalCommitments.toFloat() / income.toFloat()).coerceIn(0f, 1f) else 0f
+            val surplusWeight = if (income > 0L) ((income - summary.totalAllocated).toFloat() / income.toFloat()).coerceAtLeast(0f) else 1f
 
             Row(
                 modifier = Modifier
@@ -883,9 +862,7 @@ fun ChartLegendPill(
                 text = "$label: $value",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                maxLines = 1,
-                softWrap = false
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
             )
         }
     }
@@ -917,9 +894,7 @@ fun GoalChartProgressBarRow(
                 text = goalCalc.goal.name,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                modifier = Modifier.weight(1f)
             )
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -933,9 +908,7 @@ fun GoalChartProgressBarRow(
                 Text(
                     text = "${goalCalc.progressPercentage}% Saved",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                    maxLines = 1,
-                    softWrap = false
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
             }
         }
@@ -961,22 +934,22 @@ fun GoalChartProgressBarRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = "Saved: ${PlannerCalculations.formatCurrency(goalCalc.currentValue, currencySymbol)}",
+            MoneyText(
+                amountInPaise = goalCalc.currentValue,
+                currencySymbol = currencySymbol,
+                prefix = "Saved: ",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f, fill = false),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                modifier = Modifier.weight(1f, fill = false)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Target: ${PlannerCalculations.formatCurrency(goalCalc.goal.targetPrice, currencySymbol)}",
+            MoneyText(
+                amountInPaise = goalCalc.goal.targetPrice,
+                currencySymbol = currencySymbol,
+                prefix = "Target: ",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f, fill = false),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                modifier = Modifier.weight(1f, fill = false)
             )
         }
     }

@@ -10,19 +10,17 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
-import kotlin.math.ceil
+import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.pow
-import kotlin.math.roundToLong
 
 data class GoalLedgerMetrics(
-    val totalContributed: Double,
-    val latestActualValue: Double,
-    val gainAmount: Double,
-    val gainPercentage: Double,
-    val fundingProgressPercentage: Double,
-    val currentValueProgressPercentage: Double,
-    val remainingRequirement: Double
+    val totalContributed: Long,
+    val latestActualValue: Long,
+    val gainAmount: Long,
+    val gainPercentage: Long,
+    val fundingProgressPercentage: Long,
+    val currentValueProgressPercentage: Long,
+    val remainingRequirement: Long
 )
 
 data class ExtendTimelineResult(
@@ -33,38 +31,45 @@ data class ExtendTimelineResult(
 )
 
 data class AffordabilityResult(
-    val requiredMonthly: Double,
+    val requiredMonthly: Long,
     val isAffordable: Boolean,
-    val capacityShortfall: Double,
-    val remainingCapacityAfterGoal: Double
+    val capacityShortfall: Long,
+    val remainingCapacityAfterGoal: Long
 )
 
 data class AllocationMetrics(
-    val plannedIncome: Double,
-    val plannedCommitments: Double,
-    val plannedGoalContributions: Double,
-    val plannedUnallocated: Double,
-    val actualIncome: Double,
-    val actualCommitments: Double,
-    val actualGoalContributions: Double,
-    val actualUnallocated: Double
+    val plannedIncome: Long,
+    val plannedCommitments: Long,
+    val plannedGoalContributions: Long,
+    val plannedUnallocated: Long,
+    val actualIncome: Long,
+    val actualCommitments: Long,
+    val actualGoalContributions: Long,
+    val actualUnallocated: Long
 )
 
 object PlannerCalculations {
 
-    fun formatCurrency(amount: Double, symbol: String = "₹"): String {
-        val longVal = amount.roundToLong()
-        val formatted = if (symbol == "₹") {
-            formatIndianCurrency(longVal)
+    fun formatCurrency(amountInPaise: Long, symbol: String = "₹"): String {
+        val absAmount = abs(amountInPaise)
+        val rupees = absAmount / 100L
+        val remainder = absAmount % 100L
+        val formattedRupees = if (symbol == "₹") {
+            formatIndianCurrency(rupees)
         } else {
             val nf = NumberFormat.getIntegerInstance(Locale.US)
-            nf.format(longVal)
+            nf.format(rupees)
         }
-        return "$symbol$formatted"
+        val formatted = if (remainder == 0L) {
+            "$symbol$formattedRupees"
+        } else {
+            "$symbol$formattedRupees.${remainder.toString().padStart(2, '0')}"
+        }
+        return if (amountInPaise < 0L) "-$formatted" else formatted
     }
 
     private fun formatIndianCurrency(value: Long): String {
-        if (value < 0) return "-" + formatIndianCurrency(-value)
+        if (value < 0L) return "-" + formatIndianCurrency(-value)
         val str = value.toString()
         if (str.length <= 3) return str
 
@@ -97,24 +102,24 @@ object PlannerCalculations {
         contributions: List<Contribution>
     ): GoalLedgerMetrics {
         var contribTotal = goal.alreadySavedAmount
-        var latestValueUpdate: Double? = null
+        var latestValueUpdate: Long? = null
 
         contributions.forEach { contrib ->
             when (contrib.type) {
-                "WITHDRAWAL" -> contribTotal -= kotlin.math.abs(contrib.amount)
+                "WITHDRAWAL" -> contribTotal -= abs(contrib.amount)
                 "VALUE_UPDATE" -> latestValueUpdate = contrib.amount
                 else -> contribTotal += contrib.amount
             }
         }
 
-        val totalContributed = max(0.0, contribTotal)
-        val latestActualValue = goal.currentManualValue ?: latestValueUpdate ?: totalContributed
+        val totalContributed = max(0L, contribTotal)
+        val latestActualValue = latestValueUpdate ?: totalContributed
         val gainAmount = latestActualValue - totalContributed
-        val gainPercentage = if (totalContributed > 0) (gainAmount / totalContributed) * 100.0 else 0.0
+        val gainPercentage = if (totalContributed > 0L) (gainAmount * 100L) / totalContributed else 0L
 
-        val fundingProgressPct = if (goal.targetPrice > 0) ((totalContributed / goal.targetPrice) * 100.0).coerceIn(0.0, 100.0) else 0.0
-        val currentValueProgressPct = if (goal.targetPrice > 0) ((latestActualValue / goal.targetPrice) * 100.0).coerceIn(0.0, 100.0) else 0.0
-        val remainingReq = max(0.0, goal.targetPrice - latestActualValue)
+        val fundingProgressPct = if (goal.targetPrice > 0L) ((totalContributed * 100L) / goal.targetPrice).coerceIn(0L, 100L) else 0L
+        val currentValueProgressPct = if (goal.targetPrice > 0L) ((latestActualValue * 100L) / goal.targetPrice).coerceIn(0L, 100L) else 0L
+        val remainingReq = max(0L, goal.targetPrice - latestActualValue)
 
         return GoalLedgerMetrics(
             totalContributed = totalContributed,
@@ -128,55 +133,51 @@ object PlannerCalculations {
     }
 
     fun calculateMonthlyRequiredContribution(
-        targetPrice: Double,
-        currentValue: Double,
+        targetPrice: Long,
+        currentValue: Long,
         monthsRemaining: Int,
-        expectedReturnRatePcent: Double = 8.0
-    ): Double {
-        val remainingToSave = max(0.0, targetPrice - currentValue)
-        if (remainingToSave <= 0) return 0.0
+        expectedReturnRatePcent: Long = 8L
+    ): Long {
+        val remainingToSave = max(0L, targetPrice - currentValue)
+        if (remainingToSave <= 0L) return 0L
         if (monthsRemaining <= 0) return remainingToSave
 
-        val annualRate = expectedReturnRatePcent / 100.0
-        if (annualRate <= 0.001) {
-            return remainingToSave / monthsRemaining
+        val n = monthsRemaining.toLong()
+        if (expectedReturnRatePcent <= 0L) {
+            return remainingToSave / n
         }
 
-        val monthlyRate = annualRate / 12.0
-        val n = monthsRemaining.toDouble()
-        val factor = (1 + monthlyRate).pow(n) - 1
-        if (factor <= 0) return remainingToSave / monthsRemaining
+        val denom = 1200L * n + (expectedReturnRatePcent * n * (n + 1L)) / 2L
+        if (denom <= 0L) return remainingToSave / n
 
-        val pmt = (remainingToSave * monthlyRate) / factor
-        return max(0.0, pmt)
+        val pmt = (remainingToSave * 1200L) / denom
+        return max(0L, pmt)
     }
 
     fun calculateProjectedTargetValue(
-        currentValue: Double,
-        monthlyContribution: Double,
+        currentValue: Long,
+        monthlyContribution: Long,
         monthsRemaining: Int,
-        expectedReturnRatePcent: Double = 8.0
-    ): Double {
-        val annualRate = expectedReturnRatePcent / 100.0
-        val n = monthsRemaining.toDouble()
-
-        if (annualRate <= 0.001) {
-            return currentValue + (monthlyContribution * n)
+        expectedReturnRatePcent: Long = 8L
+    ): Long {
+        val n = monthsRemaining.toLong()
+        val baseContributions = monthlyContribution * n
+        if (expectedReturnRatePcent <= 0L) {
+            return currentValue + baseContributions
         }
 
-        val monthlyRate = annualRate / 12.0
-        val compoundedCurrent = currentValue * (1 + monthlyRate).pow(n)
-        val futureValueContributions = monthlyContribution * (((1 + monthlyRate).pow(n) - 1) / monthlyRate)
+        val interestGain = (monthlyContribution * expectedReturnRatePcent * n * (n + 1L)) / 2400L
+        val compoundedCurrent = currentValue + (currentValue * expectedReturnRatePcent * n) / 1200L
 
-        return compoundedCurrent + futureValueContributions
+        return compoundedCurrent + baseContributions + interestGain
     }
 
     fun calculateAffordability(
-        targetPrice: Double,
-        currentValue: Double,
+        targetPrice: Long,
+        currentValue: Long,
         monthsRemaining: Int,
-        returnRatePcent: Double,
-        availableMonthlyCapacity: Double
+        returnRatePcent: Long,
+        availableMonthlyCapacity: Long
     ): AffordabilityResult {
         val required = calculateMonthlyRequiredContribution(
             targetPrice = targetPrice,
@@ -185,7 +186,7 @@ object PlannerCalculations {
             expectedReturnRatePcent = returnRatePcent
         )
 
-        val capacityShortfall = max(0.0, required - max(0.0, availableMonthlyCapacity))
+        val capacityShortfall = max(0L, required - max(0L, availableMonthlyCapacity))
         val remainingAfterGoal = availableMonthlyCapacity - required
         val isAffordable = required <= availableMonthlyCapacity
 
@@ -198,11 +199,11 @@ object PlannerCalculations {
     }
 
     fun calculateEarliestAffordableTargetDate(
-        remainingTarget: Double,
-        availableCapacity: Double,
+        remainingTarget: Long,
+        availableCapacity: Long,
         fromDateMillis: Long = System.currentTimeMillis()
     ): ExtendTimelineResult {
-        if (remainingTarget <= 0) {
+        if (remainingTarget <= 0L) {
             return ExtendTimelineResult(
                 isPossible = true,
                 monthsNeeded = 0,
@@ -211,7 +212,7 @@ object PlannerCalculations {
             )
         }
 
-        if (availableCapacity <= 0) {
+        if (availableCapacity <= 0L) {
             return ExtendTimelineResult(
                 isPossible = false,
                 monthsNeeded = -1,
@@ -220,7 +221,7 @@ object PlannerCalculations {
             )
         }
 
-        val monthsNeeded = ceil(remainingTarget / availableCapacity).toInt().coerceAtLeast(1)
+        val monthsNeeded = max(1, ((remainingTarget + availableCapacity - 1L) / availableCapacity).toInt())
         val zone = ZoneId.systemDefault()
         val fromDate = Instant.ofEpochMilli(fromDateMillis).atZone(zone).toLocalDate()
         val targetDate = fromDate.plusMonths(monthsNeeded.toLong())
@@ -235,9 +236,9 @@ object PlannerCalculations {
     }
 
     fun calculateMonthlyAllocations(
-        monthlyIncome: Double,
+        monthlyIncome: Long,
         commitments: List<Commitment>,
-        activeSuggestedGoalContributions: Double,
+        activeSuggestedGoalContributions: Long,
         actualContributionsThisMonth: List<Contribution>
     ): AllocationMetrics {
         val plannedCommitments = commitments.sumOf { it.monthlyAmount }
@@ -252,11 +253,11 @@ object PlannerCalculations {
             plannedIncome = monthlyIncome,
             plannedCommitments = plannedCommitments,
             plannedGoalContributions = plannedGoalContribs,
-            plannedUnallocated = max(0.0, plannedUnallocated),
+            plannedUnallocated = plannedUnallocated,
             actualIncome = monthlyIncome,
             actualCommitments = actualCommitments,
             actualGoalContributions = actualGoalContribs,
-            actualUnallocated = max(0.0, actualUnallocated)
+            actualUnallocated = actualUnallocated
         )
     }
 

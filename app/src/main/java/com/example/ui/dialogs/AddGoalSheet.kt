@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,8 +49,8 @@ fun AddGoalDialog(
     onSaveGoal: (Goal) -> Unit
 ) {
     var name by remember { mutableStateOf(existingGoal?.name ?: "") }
-    var targetPriceText by remember { mutableStateOf(existingGoal?.targetPrice?.toInt()?.toString() ?: "") }
-    var alreadySavedText by remember { mutableStateOf(existingGoal?.alreadySavedAmount?.toInt()?.toString() ?: "0") }
+    var targetPriceText by remember { mutableStateOf(existingGoal?.let { (it.targetPrice / 100L).toString() } ?: "") }
+    var alreadySavedText by remember { mutableStateOf(existingGoal?.let { (it.alreadySavedAmount / 100L).toString() } ?: "0") }
     var targetMonths by remember { mutableIntStateOf(6) }
     var expectedReturn by remember { mutableFloatStateOf(existingGoal?.expectedReturnRate?.toFloat() ?: 8.0f) }
     var selectedCategory by remember { mutableStateOf(existingGoal?.category ?: "Electronics") }
@@ -205,8 +204,10 @@ fun AddGoalDialog(
                 }
 
                 // Save Goal Button
-                val priceVal = targetPriceText.toDoubleOrNull() ?: 0.0
-                val isValid = name.isNotBlank() && priceVal > 0
+                val priceRupees = targetPriceText.toLongOrNull() ?: 0L
+                val pricePaise = priceRupees * 100L
+                val alreadySavedPaise = (alreadySavedText.toLongOrNull() ?: 0L) * 100L
+                val isValid = name.isNotBlank() && pricePaise > 0L
 
                 Button(
                     onClick = {
@@ -214,18 +215,18 @@ fun AddGoalDialog(
                             val targetEpoch = System.currentTimeMillis() + (targetMonths.toLong() * 30 * 24 * 60 * 60 * 1000)
                             val goalToSave = existingGoal?.copy(
                                 name = name.trim(),
-                                targetPrice = priceVal,
-                                alreadySavedAmount = alreadySavedText.toDoubleOrNull() ?: 0.0,
+                                targetPrice = pricePaise,
+                                alreadySavedAmount = alreadySavedPaise,
                                 targetDateEpochMillis = targetEpoch,
-                                expectedReturnRate = expectedReturn.toDouble(),
+                                expectedReturnRate = expectedReturn.toLong(),
                                 category = selectedCategory,
                                 priority = selectedPriority
                             ) ?: Goal(
                                 name = name.trim(),
-                                targetPrice = priceVal,
-                                alreadySavedAmount = alreadySavedText.toDoubleOrNull() ?: 0.0,
+                                targetPrice = pricePaise,
+                                alreadySavedAmount = alreadySavedPaise,
                                 targetDateEpochMillis = targetEpoch,
-                                expectedReturnRate = expectedReturn.toDouble(),
+                                expectedReturnRate = expectedReturn.toLong(),
                                 category = selectedCategory,
                                 priority = selectedPriority
                             )

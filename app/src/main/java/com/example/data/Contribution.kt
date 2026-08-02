@@ -20,10 +20,9 @@ import androidx.room.PrimaryKey
 data class Contribution(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val goalId: Int,
-    val amount: Double,
+    val amount: Long, // in paise
     val dateEpochMillis: Long = System.currentTimeMillis(),
     val investmentType: String = "Savings", // "Savings", "Mutual Fund", "Stock", "FD / RD", "Other"
     val type: String = "CONTRIBUTION", // "CONTRIBUTION", "WITHDRAWAL", "VALUE_UPDATE"
     val note: String? = null
 )
-

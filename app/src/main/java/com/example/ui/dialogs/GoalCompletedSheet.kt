@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.ui.GoalWithCalculations
 import com.example.ui.screens.DetailStatRow
@@ -105,10 +104,10 @@ fun GoalCompletedDialog(
                     )
 
                     val gain = goalCalc.gainAmount
-                    val pcent = if (goalCalc.totalContributed > 0) (gain / goalCalc.totalContributed) * 100 else 0.0
+                    val pcent = if (goalCalc.totalContributed > 0L) (gain * 100L) / goalCalc.totalContributed else 0L
                     DetailStatRow(
                         label = "Investment Gain",
-                        value = "+${PlannerCalculations.formatCurrency(gain, currencySymbol)} (${String.format("%.1f", pcent)}%)",
+                        value = "+${PlannerCalculations.formatCurrency(gain, currencySymbol)} ($pcent%)",
                         valueColor = SuccessGreen
                     )
 

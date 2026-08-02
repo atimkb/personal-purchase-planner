@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 data class UserSettings(
     @PrimaryKey val id: Int = 1,
     val userName: String = "Amit",
-    val monthlyIncome: Double = 50000.0,
+    val monthlyIncome: Long = 5000000L, // in paise (₹50,000)
     val currencySymbol: String = "₹",
     val themeMode: String = "SYSTEM", // "LIGHT", "DARK", "SYSTEM"
     val allocationLimitWarningEnabled: Boolean = true
