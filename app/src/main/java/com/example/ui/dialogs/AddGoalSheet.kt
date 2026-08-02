@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -39,6 +40,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.data.Goal
+import com.example.ui.theme.ComponentTextStyles
+import com.example.ui.theme.Dimens
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -111,20 +114,45 @@ fun AddGoalDialog(
                     modifier = Modifier.fillMaxWidth().testTag("goal_price_input")
                 )
 
-                // Target Months Selection
+                // Target Months Selection Slider
                 Column {
-                    Text(
-                        text = "I want it in: $targetMonths months",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Target Timeline",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        val yearsText = if (targetMonths >= 12) {
+                            val yrs = targetMonths / 12f
+                            if (targetMonths % 12 == 0) "${targetMonths / 12} Yrs" else "%.1f Yrs".format(yrs)
+                        } else null
+                        Text(
+                            text = if (yearsText != null) "$targetMonths Months ($yearsText)" else "$targetMonths Months",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(Dimens.spacingXs))
+                    Slider(
+                        value = targetMonths.toFloat(),
+                        onValueChange = { targetMonths = it.toInt().coerceIn(1, 60) },
+                        valueRange = 1f..60f,
+                        steps = 58,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        monthOptions.forEach { months ->
+
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val presets = listOf(3 to "3 mos", 6 to "6 mos", 12 to "1 yr", 24 to "2 yrs", 36 to "3 yrs", 60 to "5 yrs")
+                        presets.forEach { (months, label) ->
                             FilterChip(
                                 selected = targetMonths == months,
                                 onClick = { targetMonths = months },
-                                label = { Text("$months mos") }
+                                label = { Text(label, style = ComponentTextStyles.chipLabel) }
                             )
                         }
                     }
@@ -172,13 +200,13 @@ fun AddGoalDialog(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Dimens.spacingXs))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         categories.forEach { cat ->
                             FilterChip(
                                 selected = selectedCategory == cat,
                                 onClick = { selectedCategory = cat },
-                                label = { Text(cat) }
+                                label = { Text(cat, style = ComponentTextStyles.chipLabel) }
                             )
                         }
                     }
@@ -191,13 +219,13 @@ fun AddGoalDialog(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Dimens.spacingXs))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         priorities.forEach { prio ->
                             FilterChip(
                                 selected = selectedPriority == prio,
                                 onClick = { selectedPriority = prio },
-                                label = { Text(prio) }
+                                label = { Text(prio, style = ComponentTextStyles.chipLabel) }
                             )
                         }
                     }
@@ -234,16 +262,17 @@ fun AddGoalDialog(
                         }
                     },
                     enabled = isValid,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(Dimens.cardCornerRadius),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    contentPadding = Dimens.buttonContentPadding,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
+                        .heightIn(min = Dimens.buttonMinHeight)
                         .testTag("save_goal_btn")
                 ) {
                     Text(
                         text = if (existingGoal == null) "Create Goal" else "Save Changes",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        style = ComponentTextStyles.primaryButton
                     )
                 }
             }

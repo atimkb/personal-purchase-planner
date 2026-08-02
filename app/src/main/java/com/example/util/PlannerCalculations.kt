@@ -272,4 +272,16 @@ object PlannerCalculations {
         val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
         return localDate.format(formatter)
     }
+
+    fun getMonthBounds(monthYearStr: String, zone: ZoneId = ZoneId.systemDefault()): Pair<Long, Long>? {
+        return try {
+            val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
+            val yearMonth = java.time.YearMonth.parse(monthYearStr, formatter)
+            val startOfMonth = yearMonth.atDay(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val endOfMonth = yearMonth.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant().toEpochMilli() - 1L
+            Pair(startOfMonth, endOfMonth)
+        } catch (e: Exception) {
+            null
+        }
+    }
 }

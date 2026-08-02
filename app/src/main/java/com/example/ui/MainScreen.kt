@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import com.example.util.PlannerCalculations
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -77,17 +78,12 @@ fun MainScreen(viewModel: PlannerViewModel) {
 
         var selectedGoalIdForDetail by remember { mutableStateOf<Int?>(null) }
         var showAddEditGoalScreen by remember { mutableStateOf(false) }
-        var showQuickOverviewScreen by remember { mutableStateOf(false) }
         var goalToEdit by remember { mutableStateOf<Goal?>(null) }
         var goalForContribution by remember { mutableStateOf<Goal?>(null) }
         var goalCompletedForCelebration by remember { mutableStateOf<GoalWithCalculations?>(null) }
         var goalToDeleteId by remember { mutableStateOf<Int?>(null) }
 
         // Back Gesture Handling:
-        BackHandler(enabled = showQuickOverviewScreen) {
-            showQuickOverviewScreen = false
-        }
-
         BackHandler(enabled = showAddEditGoalScreen) {
             showAddEditGoalScreen = false
             goalToEdit = null
@@ -97,7 +93,7 @@ fun MainScreen(viewModel: PlannerViewModel) {
             selectedGoalIdForDetail = null
         }
 
-        BackHandler(enabled = selectedNavIndex != 0 && !showQuickOverviewScreen && !showAddEditGoalScreen && selectedGoalIdForDetail == null) {
+        BackHandler(enabled = selectedNavIndex != 0 && !showAddEditGoalScreen && selectedGoalIdForDetail == null) {
             selectedNavIndex = 0
         }
 
@@ -107,7 +103,7 @@ fun MainScreen(viewModel: PlannerViewModel) {
 
         Scaffold(
             bottomBar = {
-                if (selectedGoalIdForDetail == null && !showAddEditGoalScreen && !showQuickOverviewScreen) {
+                if (selectedGoalIdForDetail == null && !showAddEditGoalScreen) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.primary,
@@ -148,14 +144,7 @@ fun MainScreen(viewModel: PlannerViewModel) {
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                if (showQuickOverviewScreen) {
-                    com.example.ui.screens.QuickOverviewScreen(
-                        state = state,
-                        onBackClick = { showQuickOverviewScreen = false },
-                        onDeleteCommitment = { id -> viewModel.deleteCommitment(id) },
-                        onClearAllCommitments = { viewModel.clearAllCommitments() }
-                    )
-                } else if (showAddEditGoalScreen) {
+                if (showAddEditGoalScreen) {
                     com.example.ui.screens.AddEditGoalScreen(
                         currencySymbol = state.userSettings.currencySymbol,
                         existingGoal = goalToEdit,
@@ -212,7 +201,6 @@ fun MainScreen(viewModel: PlannerViewModel) {
                                 goalToEdit = null
                                 showAddEditGoalScreen = true
                             },
-                            onViewAllOverviewClick = { showQuickOverviewScreen = true },
                             onMonthSelect = { month -> viewModel.setSelectedMonthYear(month) }
                         )
                         1 -> GoalsListScreen(
@@ -242,10 +230,26 @@ fun MainScreen(viewModel: PlannerViewModel) {
 
         // Dialogs
         if (goalForContribution != null) {
+            val targetGoal = goalForContribution!!
+            val goalCalc = state.goals.find { it.goal.id == targetGoal.id }
+            val recommendedAmountPaise = goalCalc?.suggestedMonthlyContribution ?: run {
+                val months = PlannerCalculations.calculateMonthsRemaining(targetGoal.targetDateEpochMillis)
+                PlannerCalculations.calculateMonthlyRequiredContribution(
+                    targetPrice = targetGoal.targetPrice,
+                    currentValue = targetGoal.alreadySavedAmount,
+                    monthsRemaining = months,
+                    expectedReturnRatePcent = targetGoal.expectedReturnRate
+                )
+            }
+            val finalSuggestedPaise = if (recommendedAmountPaise > 0L) recommendedAmountPaise else {
+                val remaining = maxOf(0L, targetGoal.targetPrice - targetGoal.alreadySavedAmount)
+                if (remaining > 0L) remaining else 100000L
+            }
+
             AddContributionDialog(
-                goal = goalForContribution!!,
+                goal = targetGoal,
                 currencySymbol = state.userSettings.currencySymbol,
-                suggestedAmount = 85000L,
+                suggestedAmount = finalSuggestedPaise,
                 onDismiss = { goalForContribution = null },
                 onAddContribution = { contrib ->
                     viewModel.addContribution(contrib)

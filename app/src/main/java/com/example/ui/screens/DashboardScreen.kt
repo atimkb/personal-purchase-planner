@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,6 +32,8 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Warning
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.DangerRed
@@ -75,17 +78,21 @@ import com.example.ui.components.SectionHeader
 import com.example.ui.theme.SuccessGreen
 import com.example.util.PlannerCalculations
 import java.util.Calendar
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun DashboardScreen(
     state: PlannerUiState,
     onGoalClick: (Int) -> Unit,
     onNewGoalClick: () -> Unit,
-    onViewAllOverviewClick: () -> Unit,
     onMonthSelect: (String) -> Unit
 ) {
-    var showMonthDropdown by remember { mutableStateOf(false) }
-    val monthsList = listOf("July 2026", "August 2026", "September 2026", "October 2026", "November 2026", "December 2026")
+    var showMonthPicker by remember { mutableStateOf(false) }
 
     val currentHour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
     val salutation = when (currentHour) {
@@ -129,55 +136,47 @@ fun DashboardScreen(
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box {
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .clickable { showMonthDropdown = true }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = state.selectedMonthYear,
-                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowDropDown,
-                                        contentDescription = "Select month",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .clickable { showMonthPicker = true }
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarToday,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = state.selectedMonthYear,
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Select month",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
+                        }
 
-                            DropdownMenu(
-                                expanded = showMonthDropdown,
-                                onDismissRequest = { showMonthDropdown = false }
-                            ) {
-                                monthsList.forEach { month ->
-                                    DropdownMenuItem(
-                                        text = { Text(month) },
-                                        onClick = {
-                                            onMonthSelect(month)
-                                            showMonthDropdown = false
-                                        }
-                                    )
-                                }
-                            }
+                        if (showMonthPicker) {
+                            MonthPickerDialog(
+                                currentMonthYear = state.selectedMonthYear,
+                                onMonthSelect = { month ->
+                                    onMonthSelect(month)
+                                },
+                                onDismiss = { showMonthPicker = false }
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
-
-                        IconButton(onClick = { /* Notification */ }) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Notifications",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
                     }
                 }
             }
@@ -283,20 +282,41 @@ fun DashboardScreen(
                                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                     RoundedCornerShape(14.dp)
                                 )
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
                                 Text(
-                                    text = "Allocated",
+                                    text = "Planned Goals",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 MoneyText(
-                                    amountInPaise = state.dashboardSummary.totalAllocated,
+                                    amountInPaise = state.dashboardSummary.totalGoalAllocations,
                                     currencySymbol = state.userSettings.currencySymbol,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(30.dp)
+                                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                            )
+
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Actually Recorded",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                MoneyText(
+                                    amountInPaise = state.dashboardSummary.totalActuallyRecorded,
+                                    currencySymbol = state.userSettings.currencySymbol,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = SuccessGreen
                                 )
                             }
 
@@ -369,65 +389,6 @@ fun DashboardScreen(
             // Custom Income vs Goal Distribution Chart Card
             item {
                 IncomeVsGoalDistributionChart(state = state)
-            }
-
-            // Quick Overview Section
-            item {
-                Column {
-                    SectionHeader(
-                        title = "Quick Overview",
-                        actionText = "View All",
-                        onActionClick = onViewAllOverviewClick
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    val income = state.dashboardSummary.monthlyIncome
-                    val goalPcent = if (income > 0L) ((state.dashboardSummary.totalGoalAllocations * 100L) / income).toInt() else 0
-                    val commitPcent = if (income > 0L) ((state.dashboardSummary.totalCommitments * 100L) / income).toInt() else 0
-                    val otherPcent = if (income > 0L) ((state.dashboardSummary.totalOtherAllocations * 100L) / income).toInt() else 0
-
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OverviewItemRow(
-                            icon = Icons.Default.Flag,
-                            title = "Goals",
-                            subtitle = "$goalPcent% of income allocated",
-                            amount = PlannerCalculations.formatCurrency(
-                                state.dashboardSummary.totalGoalAllocations,
-                                state.userSettings.currencySymbol
-                            ),
-                            iconBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                            iconTint = MaterialTheme.colorScheme.primary,
-                            onClick = onViewAllOverviewClick
-                        )
-
-                        OverviewItemRow(
-                            icon = Icons.Default.Autorenew,
-                            title = "Recurring",
-                            subtitle = "$commitPcent% of income",
-                            amount = PlannerCalculations.formatCurrency(
-                                state.dashboardSummary.totalCommitments,
-                                state.userSettings.currencySymbol
-                            ),
-                            iconBg = SuccessGreen.copy(alpha = 0.15f),
-                            iconTint = SuccessGreen,
-                            onClick = onViewAllOverviewClick
-                        )
-
-                        OverviewItemRow(
-                            icon = Icons.Default.Category,
-                            title = "Other",
-                            subtitle = "$otherPcent% of income",
-                            amount = PlannerCalculations.formatCurrency(
-                                state.dashboardSummary.totalOtherAllocations,
-                                state.userSettings.currencySymbol
-                            ),
-                            iconBg = Color(0xFFF3E8FF),
-                            iconTint = Color(0xFF9333EA),
-                            onClick = onViewAllOverviewClick
-                        )
-                    }
-                }
             }
 
             // YOUR GOALS Section
@@ -954,3 +915,113 @@ fun GoalChartProgressBarRow(
         }
     }
 }
+
+@Composable
+fun MonthPickerDialog(
+    currentMonthYear: String,
+    onMonthSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val fullMonths = listOf(
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    )
+    val shortMonths = listOf(
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    )
+
+    val parts = currentMonthYear.split(" ")
+    val initialYear = parts.getOrNull(1)?.toIntOrNull() ?: Calendar.getInstance().get(Calendar.YEAR)
+    var selectedYear by remember { mutableIntStateOf(initialYear) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { selectedYear-- }) {
+                    Icon(
+                        imageVector = Icons.Default.ChevronLeft,
+                        contentDescription = "Previous Year"
+                    )
+                }
+                Text(
+                    text = selectedYear.toString(),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                IconButton(onClick = { selectedYear++ }) {
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Next Year"
+                    )
+                }
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val chunkedMonths = shortMonths.chunked(3)
+                chunkedMonths.forEachIndexed { rowIndex, rowMonths ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowMonths.forEachIndexed { colIndex, shortName ->
+                            val monthIndex = rowIndex * 3 + colIndex
+                            val fullMonthName = fullMonths[monthIndex]
+                            val formattedOption = "$fullMonthName $selectedYear"
+                            val isSelected = formattedOption == currentMonthYear
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        onMonthSelect(formattedOption)
+                                        onDismiss()
+                                    },
+                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Text(
+                                        text = shortName,
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onMonthSelect(PlannerCalculations.formatMonthYear())
+                    onDismiss()
+                }
+            ) {
+                Text("Current Month")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+

@@ -68,12 +68,14 @@ class PlannerRepository(private val dao: PlannerDao) {
             )
         )
 
+        val now = System.currentTimeMillis()
+        val thirtyDays = 30L * 24 * 60 * 60 * 1000L
         val contributions = listOf(
-            Contribution(goalId = 1, amount = 85000L, investmentType = "Savings", note = "July savings contribution"), // ₹850
-            Contribution(goalId = 1, amount = 80000L, investmentType = "Mutual Fund", note = "June SIP"), // ₹800
-            Contribution(goalId = 1, amount = 328000L, investmentType = "Mutual Fund", type = "VALUE_UPDATE", note = "Current portfolio value update"), // ₹3,280
-            Contribution(goalId = 2, amount = 400000L, investmentType = "Mutual Fund", note = "Laptop SIP"), // ₹4,000
-            Contribution(goalId = 2, amount = 1890000L, investmentType = "Mutual Fund", type = "VALUE_UPDATE", note = "Current portfolio value update") // ₹18,900
+            Contribution(goalId = 1, amount = 85000L, dateEpochMillis = now, investmentType = "Savings", note = "Current month savings contribution"), // ₹850
+            Contribution(goalId = 1, amount = 80000L, dateEpochMillis = now - thirtyDays, investmentType = "Mutual Fund", note = "Previous month SIP"), // ₹800
+            Contribution(goalId = 1, amount = 328000L, dateEpochMillis = now, investmentType = "Mutual Fund", type = "VALUE_UPDATE", note = "Current portfolio value update"), // ₹3,280
+            Contribution(goalId = 2, amount = 400000L, dateEpochMillis = now, investmentType = "Mutual Fund", note = "Laptop SIP"), // ₹4,000
+            Contribution(goalId = 2, amount = 1890000L, dateEpochMillis = now, investmentType = "Mutual Fund", type = "VALUE_UPDATE", note = "Current portfolio value update") // ₹18,900
         )
 
         goals.forEach { dao.insertGoal(it) }

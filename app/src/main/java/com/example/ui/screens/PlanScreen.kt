@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import com.example.ui.theme.ComponentTextStyles
+import com.example.ui.theme.Dimens
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -110,17 +113,18 @@ fun PlanScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .heightIn(min = Dimens.chipMinHeight)
+                        .clip(RoundedCornerShape(Dimens.buttonCornerRadius))
                         .background(
                             if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
                         )
-                        .clickable { selectedTab = index },
+                        .clickable { selectedTab = index }
+                        .padding(vertical = Dimens.spacingSm, horizontal = Dimens.spacingXs),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleSmall.copy(
+                        style = ComponentTextStyles.chipLabel.copy(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
                         ),
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
@@ -784,6 +788,12 @@ fun MonthlyPlanView(
                         value = "- " + PlannerCalculations.formatCurrency(summary.totalGoalAllocations, state.userSettings.currencySymbol)
                     )
 
+                    DetailStatRow(
+                        label = "Actually Recorded Contributions (${state.selectedMonthYear})",
+                        value = PlannerCalculations.formatCurrency(summary.totalActuallyRecorded, state.userSettings.currencySymbol),
+                        valueColor = SuccessGreen
+                    )
+
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 
                     val isOver = summary.availableThisMonth < 0L || summary.isOverAllocated
@@ -908,12 +918,13 @@ fun AddCommitmentDialog(
                         }
                     },
                     enabled = isValid,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(Dimens.buttonCornerRadius),
+                    contentPadding = Dimens.buttonContentPadding,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .heightIn(min = Dimens.buttonMinHeight)
                 ) {
-                    Text("Add Commitment", fontWeight = FontWeight.Bold)
+                    Text("Add Commitment", style = ComponentTextStyles.primaryButton)
                 }
             }
         }

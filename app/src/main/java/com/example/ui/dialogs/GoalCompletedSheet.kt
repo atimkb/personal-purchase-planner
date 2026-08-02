@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.ui.GoalWithCalculations
 import com.example.ui.screens.DetailStatRow
+import com.example.ui.theme.ComponentTextStyles
+import com.example.ui.theme.Dimens
 import com.example.ui.theme.SuccessGreen
 import com.example.util.PlannerCalculations
 
@@ -81,16 +83,16 @@ fun GoalCompletedDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.heightIn(min = Dimens.spacingXs))
 
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            RoundedCornerShape(16.dp)
+                            RoundedCornerShape(Dimens.cardCornerRadius)
                         )
-                        .padding(16.dp),
+                        .padding(Dimens.spacingMd),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     DetailStatRow(
@@ -125,19 +127,20 @@ fun GoalCompletedDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.heightIn(min = Dimens.spacingSm))
 
                 Button(
                     onClick = onDismiss,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(Dimens.cardCornerRadius),
                     colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+                    contentPadding = Dimens.buttonContentPadding,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
+                        .heightIn(min = Dimens.buttonMinHeight)
                 ) {
                     Text(
                         text = "Great!",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        style = ComponentTextStyles.primaryButton
                     )
                 }
             }

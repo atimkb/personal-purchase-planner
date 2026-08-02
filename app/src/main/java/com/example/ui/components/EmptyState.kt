@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +21,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.ui.theme.ComponentTextStyles
+import com.example.ui.theme.Dimens
 
 @Composable
 fun EmptyState(
@@ -33,7 +37,7 @@ fun EmptyState(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(24.dp),
+            .padding(Dimens.spacingLg),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -42,9 +46,9 @@ fun EmptyState(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconTint,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(Dimens.iconSizeLg)
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacingSm))
         }
         if (!title.isNullOrBlank()) {
             Text(
@@ -53,7 +57,7 @@ fun EmptyState(
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(Dimens.spacingXs))
         }
         if (description.isNotBlank()) {
             Text(
@@ -64,9 +68,14 @@ fun EmptyState(
             )
         }
         if (!actionLabel.isNullOrBlank() && onActionClick != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onActionClick) {
-                Text(text = actionLabel)
+            Spacer(modifier = Modifier.height(Dimens.spacingMd))
+            Button(
+                onClick = onActionClick,
+                shape = RoundedCornerShape(Dimens.buttonCornerRadius),
+                contentPadding = Dimens.buttonContentPadding,
+                modifier = Modifier.heightIn(min = Dimens.buttonMinHeight)
+            ) {
+                Text(text = actionLabel, style = ComponentTextStyles.primaryButton)
             }
         }
     }

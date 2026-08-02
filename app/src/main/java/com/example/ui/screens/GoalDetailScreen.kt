@@ -7,7 +7,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import com.example.ui.theme.ComponentTextStyles
+import com.example.ui.theme.Dimens
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -336,33 +339,37 @@ fun GoalDetailScreen(
                         )
 
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Button(
                                 onClick = onCompleteGoalClick,
                                 colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
-                                modifier = Modifier.weight(1f)
+                                shape = RoundedCornerShape(Dimens.buttonCornerRadius),
+                                contentPadding = Dimens.buttonContentPadding,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = Dimens.buttonMinHeight)
                             ) {
-                                Text("Complete / Cash Out", color = Color.White)
+                                Text("Complete / Cash Out", style = ComponentTextStyles.primaryButton, color = Color.White)
                             }
                         }
                     }
                 }
             } else if (goal.status == "PAUSED") {
                 Card(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(Dimens.cardCornerRadius),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(Dimens.spacingMd),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Goal Paused ⏸️",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -375,26 +382,35 @@ fun GoalDetailScreen(
                             )
                         }
 
-                        Button(onClick = onPauseResumeClick) {
-                            Icon(imageVector = Icons.Default.PlayCircle, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Resume")
+                        Button(
+                            onClick = onPauseResumeClick,
+                            shape = RoundedCornerShape(Dimens.buttonCornerRadius),
+                            contentPadding = Dimens.buttonContentPadding,
+                            modifier = Modifier.heightIn(min = Dimens.buttonMinHeight)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(Dimens.iconSizeSm)
+                            )
+                            Spacer(modifier = Modifier.width(Dimens.spacingXs))
+                            Text("Resume", style = ComponentTextStyles.primaryButton)
                         }
                     }
                 }
             } else {
                 // Suggested Monthly Contribution Banner
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(Dimens.cardCornerRadius),
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(Dimens.spacingMd),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "This month suggestion",
                                 style = MaterialTheme.typography.labelMedium,
@@ -411,11 +427,17 @@ fun GoalDetailScreen(
 
                         OutlinedButton(
                             onClick = onPauseResumeClick,
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(Dimens.buttonCornerRadius),
+                            contentPadding = Dimens.buttonContentPadding,
+                            modifier = Modifier.heightIn(min = Dimens.buttonMinHeight)
                         ) {
-                            Icon(imageVector = Icons.Default.PauseCircle, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Pause")
+                            Icon(
+                                imageVector = Icons.Default.PauseCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(Dimens.iconSizeSm)
+                            )
+                            Spacer(modifier = Modifier.width(Dimens.spacingXs))
+                            Text("Pause", style = ComponentTextStyles.secondaryButton)
                         }
                     }
                 }
@@ -426,18 +448,23 @@ fun GoalDetailScreen(
         item {
             Button(
                 onClick = onAddContributionClick,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(Dimens.cardCornerRadius),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                contentPadding = Dimens.buttonContentPadding,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .heightIn(min = Dimens.buttonMinHeight)
                     .testTag("add_contribution_btn")
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(Dimens.iconSizeMd)
+                )
+                Spacer(modifier = Modifier.width(Dimens.spacingSm))
                 Text(
                     text = "+ Add Contribution",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    style = ComponentTextStyles.primaryButton
                 )
             }
         }

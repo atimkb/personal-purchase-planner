@@ -11,7 +11,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import com.example.ui.theme.ComponentTextStyles
+import com.example.ui.theme.Dimens
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -85,16 +89,19 @@ fun GoalsListScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.testTag("new_goal_btn")
+                shape = RoundedCornerShape(Dimens.buttonCornerRadius),
+                contentPadding = Dimens.buttonContentPadding,
+                modifier = Modifier
+                    .heightIn(min = Dimens.buttonMinHeight)
+                    .testTag("new_goal_btn")
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(Dimens.iconSizeSm)
                 )
-                Spacer(modifier = Modifier.size(4.dp))
-                Text("New Goal", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+                Spacer(modifier = Modifier.width(Dimens.spacingXs))
+                Text("New Goal", style = ComponentTextStyles.primaryButton)
             }
         }
 
@@ -114,17 +121,18 @@ fun GoalsListScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .heightIn(min = Dimens.chipMinHeight)
+                        .clip(RoundedCornerShape(Dimens.buttonCornerRadius))
                         .background(
                             if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
                         )
-                        .clickable { selectedTabIndex = index },
+                        .clickable { selectedTabIndex = index }
+                        .padding(vertical = Dimens.spacingSm, horizontal = Dimens.spacingXs),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleSmall.copy(
+                        style = ComponentTextStyles.chipLabel.copy(
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                         ),
                         color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant

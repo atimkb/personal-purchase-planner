@@ -55,7 +55,8 @@ data class DashboardSummary(
     val availableThisMonth: Long = 0L,
     val allocatedPercentage: Int = 0,
     val availablePercentage: Int = 100,
-    val isOverAllocated: Boolean = false
+    val isOverAllocated: Boolean = false,
+    val totalActuallyRecorded: Long = 0L
 )
 
 data class PlannerUiState(
@@ -67,7 +68,7 @@ data class PlannerUiState(
     val allContributions: List<Contribution> = emptyList(),
     val commitments: List<Commitment> = emptyList(),
     val dashboardSummary: DashboardSummary = DashboardSummary(),
-    val selectedMonthYear: String = "July 2026",
+    val selectedMonthYear: String = PlannerCalculations.formatMonthYear(),
     val isLoading: Boolean = true
 )
 
@@ -86,7 +87,7 @@ class PlannerViewModel(
         }
     }
 
-    private val _selectedMonthYear = MutableStateFlow("July 2026")
+    private val _selectedMonthYear = MutableStateFlow(PlannerCalculations.formatMonthYear())
 
     private val domainDataFlow = combine(
         repository.userSettings,
@@ -105,6 +106,10 @@ class PlannerViewModel(
         val userSettings = domainData.userSettingsOrNull ?: UserSettings()
         val monthlyRecordForSelected = domainData.monthlyRecordsList.find { it.monthYear == monthYear }
         val effectiveMonthlyIncome = monthlyRecordForSelected?.monthlyIncome ?: userSettings.monthlyIncome
+
+        // Month calendar boundaries: first moment to last moment of selected month
+        val monthBounds = PlannerCalculations.getMonthBounds(monthYear)
+        val (startOfMonth, endOfMonth) = monthBounds ?: Pair(0L, Long.MAX_VALUE)
 
         val goalsWithCalc = domainData.goalsList.map { goal ->
             val goalContribs = domainData.contributionsList.filter { it.goalId == goal.id }
@@ -152,10 +157,33 @@ class PlannerViewModel(
         val paused = goalsWithCalc.filter { it.goal.status == "PAUSED" }
         val completed = goalsWithCalc.filter { it.goal.status == "COMPLETED" }
 
-        // Dashboard Summary calculations
-        val totalGoalAllocations = active.sumOf { it.suggestedMonthlyContribution }
-        val totalCommitments = domainData.commitmentsList.filter { it.category != "Other" }.sumOf { it.monthlyAmount }
-        val totalOther = domainData.commitmentsList.filter { it.category == "Other" }.sumOf { it.monthlyAmount }
+        // Goals active during the selected month: created <= endOfMonth AND not completed before startOfMonth
+        val goalsActiveInMonth = goalsWithCalc.filter { calc ->
+            val g = calc.goal
+            g.createdAtEpochMillis <= endOfMonth &&
+            (g.completedDateEpochMillis == null || g.completedDateEpochMillis >= startOfMonth) &&
+            g.status != "CANCELLED"
+        }
+
+        // PLANNED goal allocations for selected month
+        val totalGoalAllocations = goalsActiveInMonth.filter { it.goal.status == "ACTIVE" }.sumOf { it.suggestedMonthlyContribution }
+
+        // Commitments active during selected month: created <= endOfMonth
+        val totalCommitments = domainData.commitmentsList
+            .filter { it.category != "Other" && it.createdAtEpochMillis <= endOfMonth }
+            .sumOf { it.monthlyAmount }
+        val totalOther = domainData.commitmentsList
+            .filter { it.category == "Other" && it.createdAtEpochMillis <= endOfMonth }
+            .sumOf { it.monthlyAmount }
+
+        // ACTUALLY RECORDED contributions during selected month:
+        // Contribution entries whose dateEpochMillis falls within [startOfMonth, endOfMonth]
+        val contributionsThisMonth = domainData.contributionsList.filter { 
+            it.dateEpochMillis in startOfMonth..endOfMonth 
+        }
+        val actualAdditions = contributionsThisMonth.filter { it.type == "CONTRIBUTION" }.sumOf { it.amount }
+        val actualWithdrawals = contributionsThisMonth.filter { it.type == "WITHDRAWAL" }.sumOf { it.amount }
+        val totalActuallyRecorded = max(0L, actualAdditions - actualWithdrawals)
 
         val totalAllocated = totalGoalAllocations + totalCommitments + totalOther
         val available = effectiveMonthlyIncome - totalAllocated
@@ -175,7 +203,8 @@ class PlannerViewModel(
             availableThisMonth = available,
             allocatedPercentage = allocatedPcent,
             availablePercentage = availablePcent,
-            isOverAllocated = totalAllocated > effectiveMonthlyIncome || available < 0L
+            isOverAllocated = totalAllocated > effectiveMonthlyIncome || available < 0L,
+            totalActuallyRecorded = totalActuallyRecorded
         )
 
         PlannerUiState(

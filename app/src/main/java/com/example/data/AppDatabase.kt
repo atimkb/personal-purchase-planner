@@ -7,6 +7,13 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `goals` ADD COLUMN `currentManualValue` REAL")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `monthly_records` (`monthYear` TEXT PRIMARY KEY NOT NULL, `monthlyIncome` REAL, `note` TEXT)")
+    }
+}
+
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `goals_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `targetPrice` INTEGER NOT NULL, `targetDateEpochMillis` INTEGER NOT NULL, `alreadySavedAmount` INTEGER NOT NULL, `category` TEXT NOT NULL, `priority` TEXT NOT NULL, `expectedReturnRate` INTEGER NOT NULL, `status` TEXT NOT NULL, `currentManualValue` INTEGER, `completedDateEpochMillis` INTEGER, `finalPurchasePrice` INTEGER, `iconName` TEXT NOT NULL, `createdAtEpochMillis` INTEGER NOT NULL)")
@@ -15,10 +22,10 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL("ALTER TABLE `goals_new` RENAME TO `goals`")
 
         db.execSQL("CREATE TABLE IF NOT EXISTS `contributions_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `goalId` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `dateEpochMillis` INTEGER NOT NULL, `investmentType` TEXT NOT NULL, `type` TEXT NOT NULL, `note` TEXT, FOREIGN KEY(`goalId`) REFERENCES `goals`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_contributions_goalId` ON `contributions_new` (`goalId`)")
         db.execSQL("INSERT INTO `contributions_new` SELECT `id`, `goalId`, CAST(`amount` * 100 AS INTEGER), `dateEpochMillis`, `investmentType`, `type`, `note` FROM `contributions`")
         db.execSQL("DROP TABLE `contributions`")
         db.execSQL("ALTER TABLE `contributions_new` RENAME TO `contributions`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_contributions_goalId` ON `contributions` (`goalId`)")
 
         db.execSQL("CREATE TABLE IF NOT EXISTS `commitments_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `monthlyAmount` INTEGER NOT NULL, `category` TEXT NOT NULL)")
         db.execSQL("INSERT INTO `commitments_new` SELECT `id`, `name`, CAST(`monthlyAmount` * 100 AS INTEGER), `category` FROM `commitments`")
@@ -45,16 +52,22 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         db.execSQL("ALTER TABLE `goals_new` RENAME TO `goals`")
 
         db.execSQL("CREATE TABLE IF NOT EXISTS `contributions_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `goalId` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `dateEpochMillis` INTEGER NOT NULL, `investmentType` TEXT NOT NULL, `type` TEXT NOT NULL, `note` TEXT, FOREIGN KEY(`goalId`) REFERENCES `goals`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_contributions_goalId` ON `contributions_new` (`goalId`)")
         db.execSQL("INSERT INTO `contributions_new` SELECT `id`, `goalId`, `amount`, `dateEpochMillis`, `investmentType`, `type`, `note` FROM `contributions`")
         db.execSQL("DROP TABLE `contributions`")
         db.execSQL("ALTER TABLE `contributions_new` RENAME TO `contributions`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_contributions_goalId` ON `contributions` (`goalId`)")
+    }
+}
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `commitments` ADD COLUMN `createdAtEpochMillis` INTEGER NOT NULL DEFAULT 0")
     }
 }
 
 @Database(
     entities = [UserSettings::class, Goal::class, Contribution::class, Commitment::class, MonthlyRecord::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -71,8 +84,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "purchase_planner.db"
                 )
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
-                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
                 INSTANCE = instance
                 instance
